@@ -13,6 +13,43 @@ documentation, counterexamples, and reproducibility are welcome.
 
 Security-sensitive reports must follow `SECURITY.md`, not a public issue.
 
+## Public repository workflow
+
+This repository is the canonical public project. Treat every tracked file,
+commit message, issue, pull request, and test artifact as immediately public.
+
+Before committing:
+
+1. Synchronize with `main` and inspect `git status`, the staged path list, and
+   the complete staged diff.
+2. Stage only the explicit paths intended for the change; avoid broad staging
+   that can silently include unrelated or newly generated files.
+3. Confirm that no credentials, personal data, private paths, local workflow
+   files, generated caches, raw dumps, or unpublished research entered the
+   change.
+4. Keep one logical change per commit and use a descriptive Conventional
+   Commit subject. Do not publish WIP or unrelated cleanup in the same commit.
+5. Update code, tests, public documentation, `CHANGELOG.md`, theorem status,
+   notation, and evidence registries together whenever the change affects them.
+6. Run the narrowest relevant checks plus repository hygiene, and state exactly
+   what passed, failed, or was not run. Never convert test coverage into a
+   stronger mathematical claim.
+
+Before pushing:
+
+- re-read the final commit rather than only the working-tree diff;
+- require a clean worktree and verify the intended branch and exact destination
+  `https://github.com/Justsomebuddy/veyra`;
+- use a normal fast-forward push; do not use `--force`, `--mirror`, `--all`, or
+  routine history rewriting;
+- use a pull request for substantial semantic, proof, API, dependency, or
+  repository-policy changes;
+- stop immediately if sensitive data was committed. A follow-up deletion does
+  not remove it from history; use the private reporting path in `SECURITY.md`.
+
+History rewriting is reserved for coordinated incident response and requires
+an explicit public-impact review, backups, and post-rewrite clone validation.
+
 ## Development setup
 
 ```bash
