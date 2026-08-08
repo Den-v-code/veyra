@@ -1,0 +1,23 @@
+# VAM src modules
+
+- `assembly.py` — `.vmasm` text parser/disassembler.
+- `bytecode.py` — `VAM0` frame encode/decode.
+- `compiler.py` — finite Core -> VAM lowering, including direct shell hook.
+- `dense.py` — `VAMD` dense bytecode frame encode/decode.
+- `diagnostics.py` — span-aware compiler diagnostics.
+- `errors.py` — stable v1.1 taxonomy rows for frame/decode/execution/boundary errors.
+- `equivalence.py` — conservative execution/report-fingerprint summaries for optimizer outputs.
+- `fixtures.py` — golden fixture corpus, obstruction surfaces, and canonical report surfaces.
+- `highlevel.py` — tiny process/claim seed lowering one echo body.
+- `highlevel_v1.py` — isolated HL-1 observer/process/claim lowering slice.
+- `interpreter.py` — Python reference executor.
+- `intrinsic_ir_types.py` — closed immutable R12.2 sidecar types for the exact R9/R11 carrier vocabulary.
+- `intrinsic_ir.py` — bounded sidecar constructors/validation and diagnostic non-wire serialization.
+- `model.py` — instruction/object/trace/state dataclasses.
+- `obligation.py` — theorem-obligation transport IR and no-certificate gate, never proof certificates.
+- `opcodes.py` — stable dense opcode table and current-instruction validator/classifier.
+- `optimizer.py` — conservative rewrite passes, compression normalization, and audit rows.
+- `proof_objects.py` — finite transport-only proof-object rows for theorem/shell carriers.
+- `report.py` — canonical Python `vam0-ref-v1` report oracle.
+- `shell.py` — finite `shell(echo(...), ...)` lowering into a non-certificate conjunction carrier.
+- `theorem.py` — theorem/obligation records plus finite quantified case carriers.

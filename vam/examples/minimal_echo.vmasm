@@ -1,0 +1,13 @@
+; Minimal VAM echo sketch — finite demo only.
+REZ      %r1, "phase"
+NOD      %r2, %r1, "0"
+NOD      %r3, %r1, "1"
+TACT     %r4, %r2, %r3, "step"
+TACT     %r5, %r3, %r2, "step"
+BREATH   %r6, %r4, %r5
+BREATH   %r7, %r5, %r4
+MODE     %r8, %r6
+MODE     %r9, %r7
+OBSERVER %r10, "length"
+ECHO     %r11, %r8, %r9, %r10
+CERT     %r12, "length-echo", %r11, "finite length observer only"

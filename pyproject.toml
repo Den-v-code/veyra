@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=77", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "veyra-core"
+version = "2.99.0"
+description = "Research software for finite observer semantics, recurrence, and exact proof-ledger experiments."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "MIT"
+authors = [{ name = "Veyra Research Contributors" }]
+keywords = ["mathematics", "foundations", "resonance", "formal-methods"]
+dependencies = [
+  "tqdm>=4.66",
+]
+
+[project.urls]
+Repository = "https://github.com/Justsomebuddy/veyra"
+Issues = "https://github.com/Justsomebuddy/veyra/issues"
+
+[project.optional-dependencies]
+dev = [
+  "build>=1.2",
+  "pytest>=8,<10",
+  "ruff>=0.12",
+]
+
+[tool.setuptools.packages.find]
+include = ["src*", "veyra_sage*", "vam*"]
+exclude = ["tests*", "scripts*", "docs*", "notebooks*", "experimental*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+exclude = ["notebooks/generated", "experimental"]
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F"]
+ignore = ["E402", "E701", "E702", "E731", "F401", "F403"]

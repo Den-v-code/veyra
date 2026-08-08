@@ -1,0 +1,42 @@
+; Generated/static Core echo lowering example.
+; Source term accepted by compile_source:
+;   echo(mode(breath(tact(nod:a,nod:b),tact(nod:b,nod:a))),mode(breath(tact(nod:b,nod:a),tact(nod:a,nod:b))),observer:length)
+;
+; Flow:
+;   1. Each nod:<label> is lowered to REZ + NOD.
+;   2. Each tact(...) joins two NOD registers into one TACT.
+;   3. BREATH wraps the finite tact stream; MODE wraps the breath.
+;   4. OBSERVER "length" projects both Mode values to breath length.
+;   5. ECHO passes because both closed modes contain two tacts under length.
+;   6. CERT records the finite Core-lowering boundary.
+;
+; The executable instructions below are the canonical disassembly produced by:
+;   compile_to_vmasm(source, certify=True, claim="core-echo", boundary="finite Core lowering")
+
+REZ %r1, "a"
+NOD %r2, %r1, "a"
+REZ %r3, "b"
+NOD %r4, %r3, "b"
+TACT %r5, %r2, %r4, "touch"
+REZ %r6, "b"
+NOD %r7, %r6, "b"
+REZ %r8, "a"
+NOD %r9, %r8, "a"
+TACT %r10, %r7, %r9, "touch"
+BREATH %r11, %r5, %r10
+MODE %r12, %r11
+REZ %r13, "b"
+NOD %r14, %r13, "b"
+REZ %r15, "a"
+NOD %r16, %r15, "a"
+TACT %r17, %r14, %r16, "touch"
+REZ %r18, "a"
+NOD %r19, %r18, "a"
+REZ %r20, "b"
+NOD %r21, %r20, "b"
+TACT %r22, %r19, %r21, "touch"
+BREATH %r23, %r17, %r22
+MODE %r24, %r23
+OBSERVER %r25, "length"
+ECHO %r26, %r12, %r24, %r25
+CERT %r27, "core-echo", %r26, "finite Core lowering"

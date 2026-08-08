@@ -1,0 +1,75 @@
+\section{Veyra Core-0: External Shadow Draft}
+
+This file is a formal shadow written in ordinary mathematics. It is not the internal language of Veyra; it is the consistency pressure layer.
+
+\subsection{Path shadow}
+
+\begin{definition}[Path shadow]
+A Core-0 path shadow consists of nods, directed tacts between nods, finite paths called breaths, and concatenation of compatible paths called stitch.
+\end{definition}
+
+\begin{definition}[Mode]
+A mode is a breath whose endpoint is echo-equivalent to its startpoint.
+\end{definition}
+
+\begin{lemma}[Consistency sketch]
+Every directed graph with finite paths gives a Core-0 shadow satisfying empty breath, stitch, and associativity up to equality, hence up to echo-equivalence.
+\end{lemma}
+
+\begin{proof}[Sketch]
+Take vertices as nods, directed edges as tacts, finite paths as breaths, empty paths as empty breaths, and path concatenation as stitch. Path concatenation is associative. Closed paths are modes. Echo-equivalence may initially be equality of paths or equality under a specified family of tests.
+\end{proof}
+
+\subsection{Test-indexed echo}
+
+\begin{definition}[Test-indexed echo]
+Let $T$ be a family of observers on constructions. Define $x \approx_T y$ iff $t(x)=t(y)$ for every observer $t\in T$.
+\end{definition}
+
+\begin{lemma}[Echo relation law]
+If each observer response has ordinary equality, then $\approx_T$ is an equivalence relation.
+\end{lemma}
+
+\begin{proof}
+Reflexivity, symmetry, and transitivity follow pointwise from ordinary equality of observer responses.
+\end{proof}
+
+\subsection{One-tact natural shadow}
+
+\begin{definition}[One-tact mode]
+Fix one nod and one tact $\tau$ looping at that nod. The silent mode is $\tau^0$. For $n>0$, the mode $\tau^n$ is the breath obtained by stitching $n$ copies of $\tau$ and closing it.
+\end{definition}
+
+\begin{definition}[Stitch addition]
+For one-tact modes, define $a\oplus b$ by path concatenation.
+\end{definition}
+
+\begin{definition}[Length-weave]
+For modes $a$ and $b$, define $a\otimes_{len} b$ as $a$ stitched to itself $\ell(b)$ times, where $\ell(b)$ is the tact-count of $b$.
+\end{definition}
+
+\begin{theorem}[Natural shadow]
+The one-nod one-tact Veyra shadow with $0_V$, $1_V$, $\oplus$, and $\otimes_{len}$ is isomorphic to natural numbers with $0$, $1$, addition, and multiplication.
+\end{theorem}
+
+\begin{proof}
+Every finite word over the one-symbol alphabet $\{\tau\}$ is uniquely $\tau^n$ for exactly one $n\in\mathbb{N}$, including the empty word $\tau^0$. Define $\Phi(\tau^n)=n$.
+
+The map is bijective by uniqueness of finite word length over a one-symbol alphabet. The silent mode maps to $0$, and $\tau^1$ maps to $1$.
+
+For addition, stitch concatenates words, so
+\[
+\Phi(\tau^m\oplus\tau^n)=\Phi(\tau^{m+n})=m+n=\Phi(\tau^m)+\Phi(\tau^n).
+\]
+
+For multiplication, length-weave repeats $\tau^m$ exactly $n$ times when driven by $\tau^n$, so
+\[
+\Phi(\tau^m\otimes_{len}\tau^n)=\Phi((\tau^m)^n)=\Phi(\tau^{mn})=mn=\Phi(\tau^m)\Phi(\tau^n).
+\]
+
+Therefore $\Phi$ preserves zero, one, addition, and multiplication. Hence the one-tact Veyra shadow is isomorphic to the usual natural-number semiring.
+\end{proof}
+
+\subsection{Caveat}
+
+The theorem proves only the external shadow result. It does not say that all Veyra modes are numbers. It says ordinary natural numbers appear when recurrence is collapsed to one tact and length-based testing.

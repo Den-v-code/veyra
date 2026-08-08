@@ -1,0 +1,65 @@
+"""Externally reviewed manual source/toolchain trust root for R12.5."""
+from types import MappingProxyType
+
+TCB_SCHEMA = "veyra-intrinsic-vam-formal-tcb-r12.5-v1"
+BRIDGE_ID = "veyra.lean.r12.5.intrinsic-vam-tcb.v1"
+EXPECTED_R11_BINDING = "ebacad7ae4334e1e2eb693e015d7417df266400ae18783cb1daa21218f649f30"
+EXPECTED_SNAPSHOT_DIGEST = "47a64ff02315f3ada0c848df61a567fa0b84af7feac693272b2563c0bfc2baad"
+EXPECTED_BINDING_DIGEST = "4eef290735f9ab795d4d4e43944ded065bf5318cd38df7af21ce398aa3605c86"
+EXPECTED_TOOLCHAIN_IDENTITY = (
+    "Lean (version 4.30.0-rc2, x86_64-unknown-linux-gnu, commit "
+    "3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc, Release)|"
+    "toolchain=leanprover/lean4:v4.30.0-rc2|binary=lean|sha256="
+    "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf|"
+    "merkle=990d68abe5bda161659d2a28ad9ba70f8739fdc30fb3655e3258df6bbc2f761a|"
+    "files=2365|bytes=522231408|size=9024"
+)
+EXPECTED_LEAN_BINARY_SHA256 = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+EXPECTED_LEAN_RUNTIME = (
+    "990d68abe5bda161659d2a28ad9ba70f8739fdc30fb3655e3258df6bbc2f761a",
+    2365,
+    522231408,
+)
+
+_EXPECTED_R12_5_TCB_DIGEST_ROWS = (
+    ("formal_effects", "65d30a244edae4ffc25bdbf12b3fb4f9af47fb393ab935f6a5de160ce4130208"),
+    ("formal_report", "b8b38d10b5c765736c56d74a38ec60b0513b727043d2b227d358ba776da233dc"),
+    ("formal_snapshot", "17ce7272c1e538be08ab14ce4b647a64b7798e3e802b23e34ca63c8e2aedbf3f"),
+    ("formal_bridge_io", "7580e83cae86091ada700e473e5dac2bd827afc37bcb9e2d61e179dec986289d"),
+    ("formal_compile", "ba54c2a5798f06ebc70af548460c1c67b096230ce14926cd5c1a210dcdd72d84"),
+    ("formal_lean_render", "e63bb0313eb946cf8c150743769df8b27cea66a198616f8bce61f29e525ee093"),
+    ("formal_bridge_core", "3ec7a2459d9354dc9eab52cc75bea199c38f1e23d186a31d982514a996610eb8"),
+    ("formal_bridge", "69bbb72017aa8b3cec7829fe2089d656bf148e3d16e0f86ed377b965f50bed81"),
+    ("effect_types", "85c0a8180a12e9e5b0cbe470764fd08b6d4b11e9b771e40d70d15e744d77ab49"),
+    ("effects", "66cbaf142e67f5418e491fe3ff20c5eaec5d76326e749399e48eb87a43731862"),
+    ("intrinsic_ir_types", "a283bd15e26871872cec4ae9711f83e62145c0356e55938c48a212b44a0a9d0d"),
+    ("intrinsic_ir", "cbbe3c4374fb77dbaa3730db802aeb6d65d4e4a9f37e5d70733219dadf8c1b4e"),
+    ("lowering_types", "42f07af6ecadf1259f5e6243b197b32edc341ca55ecb04fe556b356a307946e8"),
+    ("lowering_values", "dc0ab57796eede03d65928238e1696074a2ae308a09bc55670b287757467470d"),
+    ("lowering_receipts", "0dee95590862295da9d48874b7f7e4e454d9041612e32ea62d76e16bef82b0b8"),
+    ("lowering", "e19e89672d3700b3faf4f1771b2edbdc5fea26495778db42e1c3ca7de146607d"),
+    ("toolchain_runtime", "3829ce2283c46c09e4ff4ac0e5523771de511684c4337cad9e76397f012d8165"),
+    ("runtime_guard", "319ba5b80212d7c25912ebbf8023ebe09b41698684790db100df5801ec1c0993"),
+    ("lean_arithmetic", "e85fa215ae8cba4901620f452efd008efb4787f3373154814d897d66a45373f3"),
+    ("lean_semantics", "dc5ddc3b9a3f16c6c5fbbb988b737b806115122d8d2a3f705654e0ee63200a8b"),
+    ("lean_intrinsic_runtime", "ec0df6b350054cdda45b043fc07581f817996ecbe8e3d24bdfc82bb44d7db121"),
+    ("lean_kernel", "a3a89c7aa52a978cbe3fb7aa5b5089963b7eff61c3ab3f95ff2d38e4cce2bd53"),
+    ("lean_soundness", "225056f1820899edcaebe1d7876f325fcf90903be29c823fede88c1dabb17f14"),
+    ("lean_transport", "493e4662e295b526d5bb76b9ca528b834265142e91e0446e98af2b3b102fb16f"),
+    ("lean_observer_core", "fef5db4a94f40b7ba478c5e9d28c5680f736672d5caaea5ac97a823d3e2359d2"),
+    ("lean_observer_proof", "7ef4905cc7923ee0c5d057abbada8c3f6b97c8e181b7d73fba0ad7c21653c1d2"),
+    ("lean_intrinsic_vam", "770ab54aed74ed394162e249f034a87ff13609d037432a26d5e4bf0971a37e0d"),
+    ("lean_export", "4731f6d74a483d49c89a5c366720f1df8e77ddf4ccd2c62343a919bb6adc4d7f"),
+)
+EXPECTED_R12_5_TCB_DIGESTS = MappingProxyType(dict(_EXPECTED_R12_5_TCB_DIGEST_ROWS))
+
+MANIFEST_BOUNDARY = (
+    "bounded valid R12.2/R12.3 lowering image and exact R11 obstruction order only; "
+    "public theorem correspondence is restricted by the reviewed 2047/2048/4096/128 "
+    "resource predicates; universal helper lemmas are not correspondence evidence; "
+    "source parity does not extract Python or Rust from Lean or prove VAMI parsing/CRC, "
+    "authenticate R12.3 receipts, renew R8, add a certificate/Sage facade, promote a "
+    "layer, alter taxonomy, or cover legacy VAM; the manual manifest is an external "
+    "review root, and OS loader/glibc/ld-cache, proc/sys, entropy, mount namespace, "
+    "kernel, ptrace, and root compromise remain outside the userspace integrity TCB"
+)

@@ -1,0 +1,19 @@
+[package]
+name = "vam-native"
+version = "0.1.0"
+edition = "2021"
+description = "Minimal honest Rust VAM0 native backend scaffold"
+license = "MIT"
+default-run = "vam0-inspect"
+
+[lib]
+name = "vam_native"
+path = "src/lib.rs"
+
+[[bin]]
+name = "vam0-inspect"
+path = "src/main.rs"
+
+[[bin]]
+name = "vami-inspect"
+path = "src/bin/vami-inspect.rs"

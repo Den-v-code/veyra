@@ -1,0 +1,67 @@
+# Python caches and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyright/
+.tox/
+.nox/
+.coverage
+.coverage.*
+htmlcov/
+.benchmarks/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+pip-wheel-metadata/
+
+# Lean, Rust, and Sage build output
+*.olean
+*.ilean
+.lake/
+target/
+vam/native/target/
+.sage/
+
+# Generated project output
+data/processed/
+data/tmp/
+notebooks/generated/
+.ipynb_checkpoints/
+
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+secrets/
+credentials/
+*.kdbx
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+.netrc
+.pypirc
+
+# Local project controls
+.idea/
+.vscode/
+
+# Editors and operating systems
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
