@@ -100,6 +100,22 @@ authentication, not a public signature, sandbox, general representation law,
 or proof of implementation correctness. See
 `../docs/040_native_observer_synthesis_v2.md`.
 
+Observer synthesis v3 layers an append-only profile registry, a typed finite
+transport DSL with bounded recursive composition and derived
+bijection/injection/loss classes, and a direct typed transport × observer search
+whose stable-bucket implementation is checked against an independent exhaustive
+oracle. It adds an integer observer-gap laboratory and atomic
+normalize/transport/observer/explanation/aggregate evidence over the unchanged
+v1/v2 profiles. VOR2 authenticates either the legacy worker or canonical v3
+pipeline payload under external HMAC/Ed25519 trust while preserving VORP v1.
+Worker-v2 states distinguish enforced, available, unavailable, unsupported and
+failed controls. The worker-v3 parent marks all descriptors above stderr
+close-on-exec and its fixed child audits the post-exec table. The child remains
+custody-pending; its parent adds bounded output, wall-time and process-group
+custody only after exact fresh pipeline replay. Strict mode blocks rather than turning missing
+cgroup/seccomp/namespace controls into a sandbox claim.
+See `../docs/041_native_observer_synthesis_v3.md`.
+
 ## Required contract
 
 - Profile is explicit: `vam0-ref-v1` now; `f4-strict` is future-gated and must be
