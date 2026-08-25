@@ -90,7 +90,7 @@ def test_native_receipts_bind_continuous_exact_transition_chain() -> None:
     assert evidence.steps[0].before_state_digest == evidence.initial_state.state_digest
     assert all(
         left.after_state_digest == right.before_state_digest
-        for left, right in zip(evidence.steps, evidence.steps[1:], strict=True)
+        for left, right in zip(evidence.steps[:-1], evidence.steps[1:], strict=True)
     )
     assert evidence.steps[-1].after_state_digest == evidence.final_state.state_digest
     assert all(
