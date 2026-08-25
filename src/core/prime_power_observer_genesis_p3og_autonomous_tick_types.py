@@ -55,7 +55,6 @@ class P3OGAutonomousTickSource:
 class AutonomousTickReceipt:
     """One state-selected native transition with no caller-supplied kind."""
 
-    step_index: int
     selected_kind: TransitionKind
     before_state_digest: str
     transition: TransitionReceipt
