@@ -12,9 +12,9 @@ from .prime_power_observer_genesis_p3og_machine_internal import (
 )
 from .prime_power_observer_genesis_p3og_source import validate_seed
 from .prime_power_observer_genesis_p3og_types import (
-    BoundaryState, BranchTrace, CandidateMachineState, CouplingReceipt, P3OGSource,
-    PreCouplingMaintenanceControlReceipt, PrimitiveModeSeed, TransitionKind,
-    TransitionReceipt,
+    BoundaryState, BranchTrace, CandidateMachineState, CouplingReceipt,
+    MaintenanceControlState, P3OGSource, PreCouplingMaintenanceControlReceipt,
+    PrimitiveModeSeed, TransitionKind, TransitionReceipt,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,10 +32,20 @@ def initial_state(source: P3OGSource, seed: PrimitiveModeSeed) -> CandidateMachi
 def apply_pre_coupling_maintenance_control(
     source: P3OGSource, seed: PrimitiveModeSeed, state: CandidateMachineState,
 ) -> tuple[CandidateMachineState, PreCouplingMaintenanceControlReceipt]:
-    """Validate once, then disable maintenance before any coupling."""
+    """Validate once, then disable maintenance only at the exact initial cut."""
     logger.debug("p3og.apply_pre_coupling_maintenance_control entry")
     source, seed = validate_seed(source, seed)
     state = _validate_state_validated(source, seed, state)
+    if state.boundary is BoundaryState.REMOVED:
+        logger.error("p3og.apply_pre_coupling_maintenance_control removed boundary")
+        raise ValueError("p3og-boundary-removed")
+    if state.maintenance_control is not MaintenanceControlState.ACTIVE:
+        logger.error("p3og.apply_pre_coupling_maintenance_control invalid state")
+        raise ValueError("p3og-maintenance-control-state")
+    expected = _initial_state_validated(source, seed)
+    if state != expected:
+        logger.error("p3og.apply_pre_coupling_maintenance_control not pre-coupling")
+        raise ValueError("p3og-maintenance-control-not-pre-coupling")
     result = _apply_maintenance_control_validated(state)
     logger.debug(
         "p3og.apply_pre_coupling_maintenance_control exit state=%s",
