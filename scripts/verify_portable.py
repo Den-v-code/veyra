@@ -53,6 +53,7 @@ PORTABLE_TESTS = (
     "tests/test_p2_claim_admission_v2_adversarial.py",
     "tests/test_prime_power_observer_genesis_p3og.py",
     "tests/test_prime_power_observer_genesis_p3og_adversarial.py",
+    "tests/test_prime_power_observer_genesis_p3og_pre_coupling_cut.py",
     "tests/test_prime_power_observer_genesis_p3og_lifecycle.py",
     "tests/test_prime_power_observer_genesis_p3og_lifecycle_adversarial.py",
     "tests/test_prime_power_observer_genesis_p3og_formation_pressure.py",
