@@ -29,8 +29,35 @@ class NativeFormationStatus(str, Enum):
 
 
 @dataclass(frozen=True)
+class P3OGNativeFormationContract:
+    """Pre-selection formation rule/resource contract, with no candidate selection."""
+
+    version: str
+    formation_state_rule_id: str
+    formation_rule_id: str
+    resource_rule_id: str
+    max_formation_ticks: int
+    projection_rule_id: str
+    closure_rule_id: str
+    contract_digest: str
+
+
+@dataclass(frozen=True)
+class P3OGNativeFormationBinding:
+    """Post-selection binding of one contract to exact source/law/selected seed."""
+
+    version: str
+    contract_digest: str
+    pressure_source_digest: str
+    autonomous_source_digest: str
+    selection: DeterministicSelectionReceipt
+    selected_seed_digest: str
+    binding_digest: str
+
+
+@dataclass(frozen=True)
 class P3OGNativeFormationSource:
-    """Outcome-free binding of pressure, autonomous law, and deterministic selection."""
+    """Legacy v2 post-selection replay binding; not pre-selection source identity."""
 
     version: str
     pressure_source_digest: str
