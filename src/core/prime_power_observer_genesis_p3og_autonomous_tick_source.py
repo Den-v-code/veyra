@@ -89,7 +89,7 @@ def p3og_autonomous_tick_source(
     source: P3OGSource,
     rules: tuple[AutonomousTickRule, ...],
 ) -> P3OGAutonomousTickSource:
-    """Commit a total state-feedback transition law before any run result."""
+    """Bind a total state-feedback law without embedding a replay outcome."""
     logger.debug("p3og.autonomous_tick.source entry")
     source = validate_source(source)
     canonical_rules = _canonical_rules(rules)
