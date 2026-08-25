@@ -10,9 +10,7 @@ import pytest
 import src.core.prime_power_observer_genesis_p3og_autonomous_tick as autonomous_facade
 from src.core.prime_power_observer_genesis_p3og import (
     TransitionKind,
-    apply_pre_coupling_maintenance_control,
     deterministic_select,
-    initial_state,
     p3og_source,
 )
 from src.core.prime_power_observer_genesis_p3og_autonomous_tick import (
@@ -32,6 +30,10 @@ from src.core.prime_power_observer_genesis_p3og_autonomous_tick_codec import (
     autonomous_tick_digest,
 )
 from src.core.prime_power_observer_genesis_p3og_codec import digest as pressure_digest
+from src.core.prime_power_observer_genesis_p3og_machine import (
+    apply_pre_coupling_maintenance_control,
+    initial_state,
+)
 from src.core.prime_power_observer_genesis_p3og_types import MaintenanceControlState
 
 SUFFIX = (
