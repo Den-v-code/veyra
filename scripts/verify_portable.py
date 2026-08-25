@@ -65,6 +65,7 @@ PORTABLE_TESTS = (
     "tests/test_prime_power_observer_genesis_p3og_formation_contract_split.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_configuration.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_formation_bridge.py",
+    "tests/test_prime_power_observer_genesis_p3og_semantic_formation_history_v3.py",
     "tests/test_observer_synthesis_python_rust_vector.py",
     "tests/test_finite_builder_package_compat.py",
     "tests/test_finite_builder_types_package_compat.py",
