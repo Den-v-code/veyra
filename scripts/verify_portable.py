@@ -70,6 +70,7 @@ PORTABLE_TESTS = (
     "tests/test_prime_power_observer_genesis_p3og_matched_post_closure.py",
     "tests/test_prime_power_observer_genesis_p3og_arithmetic_input.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_retained_difference.py",
+    "tests/test_prime_power_observer_genesis_p3og_semantic_boundary_dynamics.py",
     "tests/test_observer_synthesis_python_rust_vector.py",
     "tests/test_finite_builder_package_compat.py",
     "tests/test_finite_builder_types_package_compat.py",
