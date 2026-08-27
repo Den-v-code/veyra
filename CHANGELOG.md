@@ -1,6 +1,36 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Recorded the break-locus literature verdict (doc 187): the fixed-relation
+  power characterization is classical (Duboc 1986, Prop. 1.7; projection-lemma
+  attribution corrected from Cori–Perrin in docs 183/registry); only the
+  lattice-parametric layer keeps candidate-novelty standing, checks pending.
+- Proved tightness of the break-locus bound (doc 186, `THM-TR2-009`): an
+  explicit star construction attains `|B(w)| = r` for every `r` distinct
+  primes (machine-verified `r = 1..3`); all 8 pair power-type vectors are
+  realized on the exhaustive `a²b²c²` shape; general type-matrix
+  realizability stays `OPEN`. Certificate suite total 110.
+- Resolved the Principality Conjecture via the Break-Locus Formula (doc 185,
+  `THM-TR2-008`): Achievability proved constructively (the root of a power is
+  its first block, `THM_TR2_006/007`), so `B(w)` is the minimal antichain of
+  the prime floors — agreement 6285/6285; the single-prime slice is PROVED
+  and the general conjecture REFUTED by witness `aaccabbbaccaaccbbb`. Suite
+  total 109; native end-to-end formalization of the prose assembly stays OPEN.
+- Added the TR-2/2 forcing structure (doc 184): projection of a power is a
+  power plus the divisor laws (`THM_TR2_002–005`, 53rd Lean source) force the
+  prime floors; the Forced-Locus Law was observed and pinned on all 6285
+  scanned words; `THM-TR2-001` stayed `CONJECTURE` at this stage. Suite 108.
+- Added the TR-2/1 break-locus lane (doc 183): `B(w)` via projection Δ-sets
+  with the projection lemma credited and BFS-counterpressured on six full
+  lattices; poles classified; `THM-TR2-001` (Principality, `CONJECTURE`)
+  registered after seven exhaustive sweeps — 6285 words, zero non-principal,
+  pinned post-observation. Suite total 107.
+- Added the TR-1 observer-lattice instrumentation (doc 182): commutation
+  doctrines as a refinement lattice; node identity as the whole trace-class
+  echo with typed refusals and an independent closure validator; edge breaks
+  carry verified Ω exhibits; fragility spectra (`aabbcc` breaks exactly on
+  the `bc` edge, `abcabc = (abc)²`); the abstract transfer spine is
+  `FORMALLY_PROVED` in the 52nd Lean source. Suite total 106.
 - Added the DI-2 orbit-partition candidate lane (doc 181): congruences
   licensed from partition structure with every load-bearing step native —
   primality witnessed by structural division residuals (an exact divisor

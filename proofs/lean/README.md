@@ -1,6 +1,6 @@
 # Lean proof inventory
 
-This directory contains 51 Lean source modules. The table is exhaustive over the repository `.lean` sources. Four additional PΩ1 bridge declarations (`THM_POMEGA1_012`–`015`) are intentionally **not** repository files: they are generated deterministically at check time and digest-pinned (see “Generated bridge declarations” below). Status refers to the public claim supported by the source, not merely to the presence of compilable declarations. Exact released declaration locations and dependencies are listed in `../../THEOREMS.md`.
+This directory contains 53 Lean source modules. The table is exhaustive over the repository `.lean` sources. Four additional PΩ1 bridge declarations (`THM_POMEGA1_012`–`015`) are intentionally **not** repository files: they are generated deterministically at check time and digest-pinned (see “Generated bridge declarations” below). Status refers to the public claim supported by the source, not merely to the presence of compilable declarations. Exact released declaration locations and dependencies are listed in `../../THEOREMS.md`.
 
 The separate [`experimental/research_lean/`](../../experimental/research_lean/)
 candidate is not part of the stable module inventory. Its eight files and 65 declarations are
@@ -37,6 +37,7 @@ manifest-bound and freshly checked by `make research-lean`, but retain
 | `VeyraNecklaceCongruence.lean` | exact finite necklace-congruence cards (N8): rotation orbits, prime-length dichotomy, Fermat partition counts, Gauss primitive counts, composite counterpressure | `FORMALLY_PROVED` | `THM_N8_001_rotation_composition_len3`, `THM_N8_002_orbit_dichotomy_p3_k2`, `THM_N8_003_orbit_dichotomy_p5_k2`, `THM_N8_004_fermat_count_p3_k2`, `THM_N8_005_fermat_count_p5_k2`, `THM_N8_006_gauss_primitive_count_n4_k2`, `THM_N8_007_composite_dichotomy_counterexample` |
 | `VeyraObserverCore.lean` | typed observer calculus | `FORMAL_CONSTRUCTION` | none |
 | `VeyraObserverDescent.lean` | conditional observer-descent partition spine | `FORMALLY_PROVED` | `THM_R16_001_residual_chain_partition`, `THM_R16_002_residual_synergy_disjoint`, `THM_R16_003_zero_synergy_chain_rule` |
+| `VeyraObserverLattice.lean` | TR-1 transfer spine: reachability-closure monotonicity (real induction), omega witness transport, primitivity stability, replay fixture | `FORMALLY_PROVED` | `THM_TR1_001_reaches_monotone`, `THM_TR1_002_witness_transport`, `THM_TR1_003_primitivity_stability`, `THM_TR1_004_replay_fixture` |
 | `VeyraObserverPatchAtlas.lean` | finite patch atlas/gluing criterion plus two nonpromoted uniqueness helpers | `FORMALLY_PROVED` | `THM_G4_001_exact_gluing_exists_iff_no_local_contradiction`, `THM_G4_002_triangle_singleton_overlaps_pass`, `THM_G4_003_triangle_exact_gluing_impossible` |
 | `VeyraObserverProof.lean` | proof-grade observer laws | `FORMALLY_PROVED` | `THM_R11_001_ready_echo_characterization`, `THM_R11_002_ready_domain_reflexivity`, `THM_R11_003_r7_equality_implies_ready_echo`, `THM_R11_004_tail_silence_obstruction`, `THM_R11_005_both_side_echo_domain_obstruction`, `THM_R11_006_crest_noncollapse_witness` |
 | `VeyraObserverSynthesis.lean` | observer-class closure and separation laws | `FORMALLY_PROVED` | `THM_R6_001_factor_blind`, `THM_R6_002_extension_separates` |
@@ -58,6 +59,7 @@ manifest-bound and freshly checked by `make research-lean`, but retain
 | `VeyraPrimePowerUnbounded.lean` | N6 finite-prefix invisibility and natural-power injection | `INTERNAL_RESEARCH_CANDIDATE` | `THM_P3N6_001_prefix_indistinguishable`, `THM_P3N6_002_next_depth_distinguishes`, `THM_P3N6_003_power_carrier_injective`, `THM_P3N6_004_power_carrier_eqc_injective`, `THM_P3N6_005_carrier_equality_adapter` |
 | `VeyraProbability.lean` | fixed finite probability cards | `FORMALLY_PROVED` | `THM_P001_probability_complement_counts`, `THM_P002_probability_union_counts`, `THM_P003_probability_independence_counts` |
 | `VeyraProductivityCounterpressure.lean` | finite-to-universal countermodels | `FORMALLY_PROVED` | `THM_D2_LEAN_001_finite_strict_descent`, `THM_D2_LEAN_002_no_infinite_nat_descent`, `THM_D2_LEAN_003a_self_mem`, `THM_D2_LEAN_003b_succ_subset`, `THM_D2_LEAN_003c_diagonal_absence` |
+| `VeyraProjectionPower.lean` | TR-2 forcing engine: projection append-homomorphism, projection of a power is a power (Lemma A core), power addition and divisor laws (Lemma B core) | `FORMALLY_PROVED` | `THM_TR2_002_pick_append`, `THM_TR2_003_projection_of_power`, `THM_TR2_004_pow_add`, `THM_TR2_005_pow_mul` |
 | `VeyraProofElaboration.lean` | source-bound R10 elaboration artifact | `FORMALLY_PROVED` | `THM_R10_003_elaborated_proof_accepted`, `THM_R10_004_elaborated_image_sound`, `THM_R10_005_structural_support_matches` |
 | `VeyraProofKernel.lean` | R7 typed proof calculus | `FORMAL_CONSTRUCTION` | none |
 | `VeyraProofModeTransport.lean` | R9 proof-to-mode transport | `FORMALLY_PROVED` | `THM_R9_008_R7_reflexive_resonance_transport` |
@@ -80,7 +82,7 @@ deterministically from `src/core/stream_completion_alphabet.py` (template
 module) and checked by `src/core/stream_completion_formal.py`, which pins the
 generated bytes, rejects `sorry`/`admit`, requires the exact ordered symbol set
 and exactly fifteen `#print axioms` rows, and pins the elan/Lean binary before
-compiling. `scripts/check_lean_sources.py` validates the 51 repository sources
+compiling. `scripts/check_lean_sources.py` validates the 53 repository sources
 only and does not re-check the four generated declarations; the generator gate
 above is their only compilation path, and any claim citing them must cite that
 gate, not this inventory.
@@ -108,14 +110,14 @@ gate, not this inventory.
 ## Whole-source compilation
 
 Install `elan` and the exact reviewed toolchain, then compile the complete
-51-source local import graph from the repository root:
+53-source local import graph from the repository root:
 
 ```bash
 elan toolchain install leanprover/lean4:v4.30.0-rc2
 python scripts/check_lean_sources.py --jobs 8
 ```
 
-The harness checks the exact Lean version, validates the 51-file inventory,
+The harness checks the exact Lean version, validates the 53-file inventory,
 builds dependency layers, and writes temporary `.olean` files only under the
 ignored `data/tmp/` tree. Independent modules in each layer compile in parallel.
 
