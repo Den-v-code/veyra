@@ -1,4 +1,4 @@
-"""Non-root facade for P3-OG native formation pressure v2."""
+"""Non-root facade for P3-OG native formation pressure v3."""
 
 from .prime_power_observer_genesis_p3og_native_formation_source import (
     p3og_native_formation_source,

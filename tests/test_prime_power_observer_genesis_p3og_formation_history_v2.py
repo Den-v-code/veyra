@@ -19,10 +19,16 @@ from src.core.prime_power_observer_genesis_p3og_formation_history import (
 )
 from src.core.prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
+    FormationHistoryStatus,
 )
 from src.core.prime_power_observer_genesis_p3og_native_formation import (
     p3og_native_formation_source,
     run_p3og_native_formation,
+)
+from src.core.prime_power_observer_genesis_p3og_one_shot_selection import (
+    consume_p3og_selection_capability,
+    p3og_initial_selection_capability,
+    p3og_one_shot_selection_source,
 )
 from src.core.prime_power_observer_genesis_p3og_types import MaintenanceControlState
 
@@ -60,9 +66,28 @@ def _fixture(*, low: TransitionKind = TransitionKind.MAINTAIN):
         ),
     )
     autonomous = p3og_autonomous_tick_source(source, rules)
-    formation_source = p3og_native_formation_source(source, autonomous)
+    selection_source = p3og_one_shot_selection_source(source, "f" * 64)
+    available = p3og_initial_selection_capability(source, selection_source)
+    _, consumed, receipt = consume_p3og_selection_capability(
+        source,
+        selection_source,
+        available,
+    )
+    formation_source = p3og_native_formation_source(
+        source,
+        autonomous,
+        selection_source,
+        available,
+        consumed,
+        receipt,
+    )
     formation = run_p3og_native_formation(source, autonomous, formation_source)
-    plan = p3og_formation_history_plan(source, autonomous)
+    plan = p3og_formation_history_plan(
+        source,
+        autonomous,
+        selection_source,
+        available,
+    )
     return source, autonomous, formation_source, formation, plan
 
 
@@ -78,15 +103,42 @@ def test_formation_contract_is_committed_before_selection() -> None:
         "b" * 64,
     )
     ids = tuple(event.event_id for event in evidence.events)
-    assert ids.index("formation-contract") < ids.index("selection")
+    assert ids.index("formation-contract") < ids.index("selection-consume")
+    assert ids.index("blind-seed") < ids.index("selection-consume")
+    assert ids.index("selection-pool") < ids.index("selection-consume")
+    assert ids.index("selection-capability-available") < ids.index(
+        "selection-consume"
+    )
+    assert ids.index("selection-consume") < ids.index(
+        "selection-capability-consumed"
+    )
     assert "formation-contract" in evidence.strict_past_event_ids
+    assert "blind-seed" in evidence.strict_past_event_ids
+    assert "selection-pool" in evidence.strict_past_event_ids
+    assert "selection-capability-available" in evidence.strict_past_event_ids
+    assert "selection-consume" in evidence.strict_past_event_ids
+    assert "selection-capability-consumed" in evidence.strict_past_event_ids
     assert "decisive-criterion" in evidence.future_event_ids
     assert "later-result" in evidence.future_event_ids
-    assert len(evidence.events) == len(formation.ticks) + 9
+    assert len(evidence.events) == len(formation.ticks) + 14
     assert plan.max_events == 256
     assert plan.max_parents_per_event == 8
-    assert "selection" not in {field.name for field in fields(plan)}
+    plan_fields = {field.name for field in fields(plan)}
+    assert "selected_seed_digest" not in plan_fields
+    assert "selection_receipt_digest" not in plan_fields
+    assert "criterion_payload_digest" not in plan_fields
+    assert "later_result_payload_digest" not in plan_fields
+    assert plan.selection_source_digest == formation_source.selection_source.source_digest
+    assert plan.available_capability_digest == (
+        formation_source.selection_before.capability_digest
+    )
     assert evidence.promotions == 0
+    assert "full-def-og-002-discharge" in evidence.nonclaims
+    assert "process-global-unforgeable-linear-capability" in evidence.nonclaims
+    assert "endogenous-observer-role" in evidence.nonclaims
+    assert "birth-core-or-historical-token" in evidence.nonclaims
+    assert "n0-or-hap-lift" in evidence.nonclaims
+    assert "historical-actualization" in evidence.nonclaims
 
 
 def test_future_seal_cannot_be_preloaded_in_preclosure_digest_inventory() -> None:
@@ -94,6 +146,9 @@ def test_future_seal_cannot_be_preloaded_in_preclosure_digest_inventory() -> Non
     preloaded = (
         formation_source.selected_seed_digest,
         formation_source.selection.receipt_digest,
+        formation_source.selection_source.blind_seed_digest,
+        formation_source.selection_before.capability_digest,
+        formation_source.selection_after.capability_digest,
         formation.evidence_digest,
         plan.lineage_id,
     )
@@ -108,6 +163,55 @@ def test_future_seal_cannot_be_preloaded_in_preclosure_digest_inventory() -> Non
                 digest,
                 "c" * 64,
             )
+
+
+def test_history_plan_requires_the_exact_available_preselection_cut() -> None:
+    source, autonomous, formation_source, _, _ = _fixture()
+    with pytest.raises(ValueError, match="plan-capability-consumed"):
+        p3og_formation_history_plan(
+            source,
+            autonomous,
+            formation_source.selection_source,
+            formation_source.selection_after,
+        )
+
+
+def test_history_plan_cannot_be_spliced_across_blind_selection_sources() -> None:
+    source, autonomous, formation_source, formation, plan = _fixture()
+    foreign_selection_source = p3og_one_shot_selection_source(source, "e" * 64)
+    foreign_available = p3og_initial_selection_capability(
+        source,
+        foreign_selection_source,
+    )
+    _, foreign_consumed, foreign_receipt = consume_p3og_selection_capability(
+        source,
+        foreign_selection_source,
+        foreign_available,
+    )
+    foreign_formation_source = p3og_native_formation_source(
+        source,
+        autonomous,
+        foreign_selection_source,
+        foreign_available,
+        foreign_consumed,
+        foreign_receipt,
+    )
+    foreign_formation = run_p3og_native_formation(
+        source,
+        autonomous,
+        foreign_formation_source,
+    )
+    assert foreign_formation_source.source_digest != formation_source.source_digest
+    with pytest.raises(ValueError):
+        build_p3og_formation_history_evidence(
+            source,
+            autonomous,
+            plan,
+            foreign_formation_source,
+            foreign_formation,
+            "a" * 64,
+            "b" * 64,
+        )
 
 
 def test_external_future_seals_are_fresh_validation_premises() -> None:
@@ -144,11 +248,45 @@ def test_external_future_seals_are_fresh_validation_premises() -> None:
         )
 
 
-def test_refuted_native_formation_cannot_mint_history_witness() -> None:
+def test_refuted_selected_seed_is_preserved_without_retry_or_future_seals() -> None:
     source, autonomous, formation_source, formation, plan = _fixture(
         low=TransitionKind.IDLE,
     )
-    with pytest.raises(ValueError, match="requires-witnessed-formation"):
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        None,
+        None,
+    )
+    assert evidence.status is FormationHistoryStatus.REFUTED
+    assert evidence.formation_terminal_event_id == "formation-refutation"
+    assert evidence.closure_event_id is None
+    assert evidence.criterion_event_id is None
+    assert evidence.later_result_event_id is None
+    assert evidence.future_event_ids == ()
+    assert "selection-consume" in evidence.strict_past_event_ids
+    assert len(evidence.events) == len(formation.ticks) + 12
+    rebuilt = validate_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        None,
+        None,
+        evidence,
+    )
+    assert rebuilt == evidence
+    with pytest.raises(ValueError, match="capability-consumed"):
+        consume_p3og_selection_capability(
+            source,
+            formation_source.selection_source,
+            formation_source.selection_after,
+        )
+    with pytest.raises(ValueError, match="refuted-future-seal"):
         build_p3og_formation_history_evidence(
             source,
             autonomous,

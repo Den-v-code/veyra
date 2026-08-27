@@ -1,4 +1,4 @@
-"""Closed DTOs for authority-free P3-OG native formation pressure v2."""
+"""Closed DTOs for authority-free P3-OG native formation pressure v3."""
 
 from __future__ import annotations
 
@@ -8,9 +8,13 @@ from enum import Enum
 from .prime_power_observer_genesis_p3og_autonomous_tick_types import (
     AutonomousTickReceipt,
 )
+from .prime_power_observer_genesis_p3og_one_shot_selection_types import (
+    P3OGOneShotSelectionReceipt,
+    P3OGOneShotSelectionSource,
+    P3OGSelectionCapability,
+)
 from .prime_power_observer_genesis_p3og_types import (
     CandidateMachineState,
-    DeterministicSelectionReceipt,
 )
 
 
@@ -30,12 +34,15 @@ class NativeFormationStatus(str, Enum):
 
 @dataclass(frozen=True)
 class P3OGNativeFormationSource:
-    """Outcome-free binding of pressure, autonomous law, and deterministic selection."""
+    """Bind formation to one validated bounded one-shot selection trace."""
 
     version: str
     pressure_source_digest: str
     autonomous_source_digest: str
-    selection: DeterministicSelectionReceipt
+    selection_source: P3OGOneShotSelectionSource
+    selection_before: P3OGSelectionCapability
+    selection_after: P3OGSelectionCapability
+    selection: P3OGOneShotSelectionReceipt
     selected_seed_digest: str
     formation_state_rule_id: str
     formation_rule_id: str
@@ -92,8 +99,9 @@ class P3OGNativeFormationEvidence:
 
 P3OG_NATIVE_FORMATION_NONCLAIMS = (
     "historical-code-commitment-or-chronology",
-    "criterion-blind-historical-selection",
-    "consumed-one-shot-capability",
+    "externally-authenticated-criterion-blind-selection",
+    "process-global-unforgeable-linear-capability",
+    "copied-available-value-anti-replay",
     "typed-history-dag-or-full-def-og-003",
     "full-def-og-001-discharge",
     "primitive-rez-nod-tact-breath-genealogy",
