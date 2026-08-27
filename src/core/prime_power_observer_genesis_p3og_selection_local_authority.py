@@ -121,6 +121,22 @@ def reserve_p3og_selection_local_authority(
     return reserved
 
 
+def p3og_selection_local_authority_attempt_digest(
+    reserved_receipt_digest: str,
+    attempt_id: str,
+) -> str:
+    """Bind one exact attempt identifier to one exact RESERVED receipt."""
+    _require_digest(
+        reserved_receipt_digest,
+        "p3og-selection-local-authority-reserved-receipt",
+    )
+    _bounded_text(attempt_id, "p3og-selection-local-authority-attempt-id")
+    return digest_data(
+        {"reservation_receipt": reserved_receipt_digest, "attempt_id": attempt_id},
+        "veyra.p3og.selection-local-attempt.v1",
+    )
+
+
 def claim_p3og_selection_local_authority(
     directory: Path,
     reservation_id: str,
@@ -139,9 +155,9 @@ def claim_p3og_selection_local_authority(
         _authenticate(current, capability_digest)
         if current.state is not P3OGSelectionLocalAuthorityState.RESERVED:
             _reject("p3og-selection-local-authority-already-claimed")
-        attempt_digest = digest_data(
-            {"reservation_receipt": current.receipt_digest, "attempt_id": attempt_id},
-            "veyra.p3og.selection-local-attempt.v1",
+        attempt_digest = p3og_selection_local_authority_attempt_digest(
+            current.receipt_digest,
+            attempt_id,
         )
         claimed = _bind_receipt(
             replace(

@@ -104,6 +104,7 @@ jobs:
         run: >-
           python -m pytest -q -p no:cacheprovider
           tests/test_prime_power_observer_genesis_p3og_selection_local_authority.py
+          tests/test_prime_power_observer_genesis_p3og_selection_authority_history.py
       - name: Portable verification
         run: python scripts/verify_portable.py
 
