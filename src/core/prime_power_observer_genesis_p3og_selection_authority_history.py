@@ -23,6 +23,7 @@ from .prime_power_observer_genesis_p3og_native_formation_types import (
     P3OGNativeFormationSource,
 )
 from .prime_power_observer_genesis_p3og_one_shot_selection_types import (
+    P3OGOneShotSelectionReceipt,
     P3OGOneShotSelectionSource,
     P3OGSelectionCapability,
 )
@@ -165,7 +166,7 @@ def consume_p3og_selection_for_authority_history_plan(
 ) -> tuple[
     PrimitiveModeSeed,
     P3OGSelectionCapability,
-    object,
+    P3OGOneShotSelectionReceipt,
     P3OGSelectionLocalAuthorityEvidence,
 ]:
     """Burn exactly the authority reserved for this exact preselection plan."""

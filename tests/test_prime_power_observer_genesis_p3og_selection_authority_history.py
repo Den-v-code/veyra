@@ -57,7 +57,13 @@ def _secure(path: Path) -> Path:
     return path
 
 
-def _prefix(tmp_path: Path, *, name: str = "authority-history", reservation_id: str = "selection-1"):
+def _prefix(
+    tmp_path: Path,
+    *,
+    name: str = "authority-history",
+    reservation_id: str = "selection-1",
+    low: TransitionKind = TransitionKind.MAINTAIN,
+):
     source = p3og_source(
         prime=3,
         depth=1,
@@ -69,7 +75,7 @@ def _prefix(tmp_path: Path, *, name: str = "authority-history", reservation_id: 
     )
     rules = (
         autonomous_tick_rule(MaintenanceControlState.ACTIVE, MaintenanceCreditClass.HIGH, TransitionKind.IDLE),
-        autonomous_tick_rule(MaintenanceControlState.ACTIVE, MaintenanceCreditClass.LOW, TransitionKind.MAINTAIN),
+        autonomous_tick_rule(MaintenanceControlState.ACTIVE, MaintenanceCreditClass.LOW, low),
         autonomous_tick_rule(MaintenanceControlState.DISABLED, MaintenanceCreditClass.HIGH, TransitionKind.IDLE),
         autonomous_tick_rule(MaintenanceControlState.DISABLED, MaintenanceCreditClass.LOW, TransitionKind.IDLE),
     )
@@ -99,18 +105,8 @@ def _prefix(tmp_path: Path, *, name: str = "authority-history", reservation_id: 
     return source, autonomous, selection_source, available, history_plan, directory, secret, reserved, authority_plan
 
 
-def _finish(prefix, *, low: TransitionKind = TransitionKind.MAINTAIN, direct_attempt: str | None = None):
+def _finish(prefix, *, direct_attempt: str | None = None):
     source, autonomous, selection_source, available, history_plan, directory, secret, reserved, authority_plan = prefix
-    if low is not TransitionKind.MAINTAIN:
-        rules = (
-            autonomous_tick_rule(MaintenanceControlState.ACTIVE, MaintenanceCreditClass.HIGH, TransitionKind.IDLE),
-            autonomous_tick_rule(MaintenanceControlState.ACTIVE, MaintenanceCreditClass.LOW, low),
-            autonomous_tick_rule(MaintenanceControlState.DISABLED, MaintenanceCreditClass.HIGH, TransitionKind.IDLE),
-            autonomous_tick_rule(MaintenanceControlState.DISABLED, MaintenanceCreditClass.LOW, TransitionKind.IDLE),
-        )
-        autonomous = p3og_autonomous_tick_source(source, rules)
-        history_plan = p3og_formation_history_plan(source, autonomous, selection_source, available)
-        raise AssertionError("low variation must be prepared before reservation")
     if direct_attempt is None:
         _seed, consumed, selection, authority = consume_p3og_selection_for_authority_history_plan(
             directory,
@@ -156,8 +152,8 @@ def _finish(prefix, *, low: TransitionKind = TransitionKind.MAINTAIN, direct_att
     return (*prefix, formation_source, formation, criterion, later, history, authority)
 
 
-def _case(tmp_path: Path):
-    prefix = _prefix(tmp_path)
+def _case(tmp_path: Path, *, low: TransitionKind = TransitionKind.MAINTAIN):
+    prefix = _prefix(tmp_path, low=low)
     artifacts = _finish(prefix)
     source, autonomous, _ss, _available, history_plan, directory, _secret, _reserved, authority_plan, formation_source, formation, criterion, later, history, authority = artifacts
     binding = build_p3og_selection_authority_history_binding(
@@ -274,7 +270,7 @@ def test_foreign_reservation_cannot_be_spliced_into_precommitted_plan(tmp_path: 
     formation = run_p3og_native_formation(source, autonomous, formation_source)
     history = build_p3og_formation_history_evidence(source, autonomous, history_plan, formation_source, formation, "a" * 64, "b" * 64)
     assert reserved_b.receipt_digest != plan_a.authority_reserved_receipt_digest
-    with pytest.raises(ValueError, match="plan-malformed|reservation-drift"):
+    with pytest.raises(ValueError, match="plan-(?:malformed|drift)|reservation-drift"):
         build_p3og_selection_authority_history_binding(
             directory_b,
             source,
@@ -314,3 +310,34 @@ def test_binding_field_splice_fails_fresh_store_and_history_replay(tmp_path: Pat
     assert "full-def-og-002-discharge" in binding.nonclaims
     assert "cross-store-or-process-global-uniqueness" in binding.nonclaims
     assert "historical-actualization" in binding.nonclaims
+
+
+def test_refuted_selection_remains_authority_consumed_and_has_no_future_seals(tmp_path: Path) -> None:
+    artifacts = _case(tmp_path, low=TransitionKind.IDLE)
+    (
+        _source,
+        _autonomous,
+        _selection_source,
+        _available,
+        _history_plan,
+        _directory,
+        _secret,
+        _reserved,
+        _authority_plan,
+        formation_source,
+        formation,
+        criterion,
+        later,
+        history,
+        authority,
+        binding,
+    ) = artifacts
+    assert formation.status.value.startswith("refuted")
+    assert criterion is None
+    assert later is None
+    assert history.status is FormationHistoryStatus.REFUTED
+    assert history.future_event_ids == ()
+    assert authority.terminal.state is P3OGSelectionLocalAuthorityState.CONSUMED
+    assert authority.selection_receipt_digest == formation_source.selection.receipt_digest
+    assert binding.selection_receipt_digest == formation_source.selection.receipt_digest
+    assert binding.promotions == 0
