@@ -298,7 +298,7 @@ def validate_p3og_selection_local_authority(
         evidence.terminal,
         selection.receipt_digest,
     )
-    if canonical_bytes(expected) != canonical_bytes(evidence):
+    if expected != evidence:
         _reject("p3og-selection-local-authority-evidence-drift")
     return replace(expected)
 
