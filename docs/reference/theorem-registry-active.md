@@ -289,3 +289,35 @@ composite-length counterexample recorded as a blocked witness. Fermat/Gauss
 are classical externally; this lane registers only the native orbit-partition
 mechanization and adds no general theorem, no density or analytic claim, no
 promotion, and no new status token. See doc 179.
+
+`DEF-727–730` define the DI-1 doctrinal-induction candidate: the doctrine /
+property-contract core with digest-chained receipts (727), the native
+uniformity witness — anchor-renaming echo of the derivation at two fresh
+anchors (728), the ledger-relative `AllDepthLicense` semantics — every depth
+replayable in exactly that many step applications, statuses
+`licensed`/`blocked` only (729), and the shipped adversarial controls — a
+name-peeking step must fail uniformity and a depth bomb must block at its
+exact depth (730). The rule itself is `INTERNAL_RESEARCH_CANDIDATE` and is
+AFIP's proof-side companion; license outcomes over the exact bounded probes
+are `EXECUTABLE_EVIDENCE`; `THM-DI1-001`–`005` are `FORMALLY_PROVED` general
+shadow laws in `VeyraDoctrinalInduction.lean`, with `THM_DI1_001` pinning the
+classical shadow (host recursor) deliberately. No completed carrier, no
+unconditional universal, no promotion; P1-D2 countermodels remain binding;
+shift-uniformity and the DI-2 orbit-partition rule are `OPEN`. See doc 180.
+
+`DEF-731–734` define the DI-2 orbit-partition candidate: the native
+prime-length witness — every candidate divisor must leave a structural
+residual, an exact divisor blocks with its row (731); the derived dichotomy —
+orbit size is length/period via the cut-free primitive root, membership of
+the period in {1, length} licensed by the divisor witness, never by rotation
+counting (732); the congruence-as-reconstruction — `weave(length, full
+orbits)` must breath-equal the nonconstant tally, so divisibility is woven
+rather than remainder-checked (733); and the DI-1 composition over alphabet
+depth with delta-only step classification and independent validator
+recomputation, subsuming the N8 Fermat instances as one licensed family
+statement per witnessed-prime length (734). The rule is
+`INTERNAL_RESEARCH_CANDIDATE`; licenses are `EXECUTABLE_EVIDENCE`;
+`THM-DI2-001`–`005` are `FORMALLY_PROVED` conditional/inductive shadow laws
+in `VeyraOrbitPartition.lean`. The N8 Lean instance cards remain the formal
+anchors; no general all-prime theorem, no completed carrier, no promotion.
+See doc 181.
