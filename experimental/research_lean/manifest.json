@@ -139,6 +139,12 @@
       "declarations": []
     },
     {
+      "path": "proofs/lean/VeyraObserverLattice.lean",
+      "sha256": "03e44d40bffd2cfd767e709f8c8cab12e197fdd7606651b0bfbe2e9b0041f142",
+      "imports": [],
+      "declarations": []
+    },
+    {
       "path": "proofs/lean/VeyraObserverPatchAtlas.lean",
       "sha256": "6e0b011f61c8f6093973efe61577aac82b2848564ea87675fdfdd5fe5f07038c",
       "imports": [],
@@ -290,6 +296,12 @@
       "imports": [
         "Lean.Elab.Tactic.Omega"
       ],
+      "declarations": []
+    },
+    {
+      "path": "proofs/lean/VeyraProjectionPower.lean",
+      "sha256": "b84a8b327f6eaf8d58d9b0c59c504b81b47063e1f67f6bdfa279c947d3a492b6",
+      "imports": [],
       "declarations": []
     },
     {
@@ -917,8 +929,8 @@
     "RESEARCH_S_T011_weave_units": []
   },
   "source_roots": {
-    "base": "6ce0a07e3888a49d539acc854f9e52e7eac99840fa0f36c206206b4bac7a43a9",
+    "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
     "research": "9c38a3d665774ec860fff1ca79d1280500df3554df266d7288c3de6208e14514"
   },
-  "proof_root": "6339ec339a4aa913ae6b7118da6b31c17087867bef9d27a5afe4e74a5c382f95"
+  "proof_root": "fd00e03b1a1c10f9e983840e83da87f0b5a7b0e41b05337087d45e05053f905c"
 }

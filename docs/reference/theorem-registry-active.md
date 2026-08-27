@@ -321,3 +321,109 @@ statement per witnessed-prime length (734). The rule is
 in `VeyraOrbitPartition.lean`. The N8 Lean instance cards remain the formal
 anchors; no general all-prime theorem, no completed carrier, no promotion.
 See doc 181.
+
+`DEF-735–739` define the TR-1 observer-lattice instrumentation: commutation
+doctrines with validated pairs and refinement rows carrying extra-pair
+witnesses (735); the trace-class echo object with exact enumeration, a
+typed `class-size-refusal` boundary and an independent closure validator,
+Cartier–Foata layers kept as display receipts (736); node primitivity
+decided through class members via the cut-free primitive root, with the
+power exhibit recorded (737); edge transfer rows whose break carries the
+Ω exhibit verified to live outside the fine class, with the abstract
+monotone spine `THM-TR1-001`–`004` `FORMALLY_PROVED` in
+`VeyraObserverLattice.lean` — coarse-primitive implies fine-primitive
+(738); and the fragility spectrum with its exact first-break edge — the
+flagship `aabbcc` cell breaks exactly on the `bc` edge with exhibit
+`abcabc = (abc)²` (739). Classical trace theory is credited; the lane is
+`INTERNAL_RESEARCH_CANDIDATE`, rows are `EXECUTABLE_EVIDENCE`, and TR-2
+(licensed transfer laws, Ω calculus, Möbius flow along the lattice) is
+`OPEN`. See doc 182.
+
+`DEF-740–743` define the TR-2/1 break-locus lane: pairwise projections and
+Δ-sets of same-multiset power candidates (740); the break locus `B(w)` as
+the ⊆-minimal antichain of Δ-sets, with the literal-power pole `B = {∅}`
+and the absolutely-primitive pole `B = ∅` (741); the full-lattice
+cross-check that confronts every Δ-prediction with BFS trace-class truth —
+the classical projection lemma (Duboc 1985/1986; Wrathall 1988 — see
+doc 187; earlier text mis-attributed it to Cori–Perrin) is credited and
+counterpressured, not assumed (742); and exhaustive shape sweeps with typed
+`sweep-size-refusal` boundaries (743). **`THM-TR2-001` — Principality
+Conjecture — status `CONJECTURE`:** for every word the break locus contains
+at most one doctrine. Evidence: 6285 words across seven exhaustively
+scanned shapes (a³b³, a⁴b², a⁴b⁴, a²b²c², a²b²c⁴, a⁴b⁴c², a²b²c²d²) with
+zero non-principal loci and `max_locus_size = 1` throughout, pinned
+post-observation; six full-lattice cross-checks matched with zero
+mismatches and zero refusals. Up-closedness spine: `THM-TR1-002/003`. No
+theorem is claimed for unscanned shapes; a native projection-lemma
+formalization and the intersection-closure question remain `OPEN`. See
+doc 183.
+
+`DEF-744–747` register the TR-2/2 forcing structure toward `THM-TR2-001`:
+the executable forcing floor `F_k(w)` with per-candidate Lemma-A
+counterpressure, anchored by `THM-TR2-002/003` — projection is an append
+homomorphism and the projection of a power is a power (`FORMALLY_PROVED`,
+real induction, `VeyraProjectionPower.lean`) (744); prime reduction via
+`THM-TR2-004/005` — power addition and divisor laws, so minimal deltas
+live at prime exponents and floors are divisibility-monotone
+(`FORMALLY_PROVED`) (745); the single-prime reduction *Principality ⇔
+Achievability* — prose-derived from 744/745 plus minimality (external-
+draft precedent W-001; native formalization `OPEN`) — together with the
+**Forced-Locus Law**: `B(w) == {F_q(w)}` on all 6285 exhaustively scanned
+single-prime words, zero Lemma-A violations, zero law mismatches, pinned
+post-observation (`EXECUTABLE_EVIDENCE`) (746); and the two-prime
+frontier: incomparable floors exist in principle (`F_2 = ∅`, `F_3 = {ab}`
+for `(aabbab)²`), a deliberate a⁶b⁶c⁶ counterexample dies on realizability
+via the explicit position cycle `a₅<b₄<c₄<a₅` (merge obstruction), and a
+seeded probe of 1200 sampled a⁶b⁶c⁶ words is entirely principal —
+`SAMPLED` evidence only (747). `THM-TR2-001` remains `CONJECTURE`; the
+Achievability Conjecture and the two-prime case are `OPEN`. See doc 184.
+
+`DEF-748–750` register the TR-2/3 resolution: the `firstSlice`
+construction and the executable achieved-floor check — the root of a
+power is its first block (`THM-TR2-006/007`, `FORMALLY_PROVED`), so
+`Δ(w, firstSlice_k(w)^k) = F_k(w)` for every valid exponent, verified
+with zero failures on every valid exponent of all 6285 scanned words and
+the witness (748); the closed-form locus `locus_formula` — **`THM-TR2-008`
+Break-Locus Formula: `B(w)` is the minimal antichain of the prime floors
+`{F_q : q | gcd}`** — prose-derived from `THM-TR2-002..007` plus
+minimality (W-001 precedent; native end-to-end formalization `OPEN`),
+with executable agreement `locus_formula == break_locus` on all 6285
+scanned words, zero mismatches (749); and the resolution of
+`THM-TR2-001` (750): the **single-prime slice is PROVED** as a corollary
+(all scanned shapes were single-prime — the structural reason for
+6285/6285 principality), and the **general form is REFUTED** by the
+explicit witness `w* = aaccabbbaccaaccbbb` with `F₂ = {ac,bc}`,
+`F₃ = {ab,bc}`, `B(w*) = {{ab,bc},{ac,bc}}` — machine-verified through
+the formula; direct BFS at 18 letters exceeds the declared caps and is
+honestly not performed, the classical projection lemma having been
+cross-checked on six full small lattices (doc 183). Corollary: `|B(w)|`
+is at most the number of distinct primes dividing the gcd. See doc 185.
+
+`DEF-751–753` register the TR-2/4 classification slice: the star
+tightness construction and its verifier (751) — **`THM-TR2-009`
+Tightness: for every set of `r` distinct primes an explicit star word
+attains `|B(w)| = r`**, prose-derived and constructive (hub-shared
+constraints admit no merge-obstruction cycle), machine-verified for
+`r = 1, 2, 3` with exact floors and formula/enumeration agreement on the
+`r = 2` witness `aaabbzzbbzaaazbbzz` (752); and the type-spectrum
+instrument (753): on the exhaustive `a²b²c²` shape at `q = 2` all 8 pair
+power-type vectors are realized, and on `a³b³` at `q = 3` both — no
+hidden type constraint at the smallest shapes. General type-matrix
+realizability remains `OPEN` (narrowed by the star theorem and the
+exhaustive small-shape spectra). See doc 186.
+
+**Literature positioning (doc 187, binding on the whole TR-2 lane):** the
+fixed-relation characterization behind `THM-TR2-002..007` is **classical
+— Duboc 1986, Prop. 1.7** (with the projection lemma from Duboc
+1985/1986 and Wrathall 1988; an earlier Cori–Perrin attribution here was
+wrong and is corrected), and the up-closedness spine `THM-TR1-001/003` is
+folklore from the canonical morphism `M(Σ,I) → M(Σ,J)`. Those rows keep
+their evidence rungs as formalizations and carry **no novelty claim**.
+The lane's candidate contributions are only the lattice-parametric
+layer — `B(w)`, the prime-floor formula `THM-TR2-008`, tightness
+`THM-TR2-009`, the singleton criterion and the refutation witness — for
+which no precedent was found in searched sources (closest structural
+neighbour: Earnshaw–Sobociński 2023 on the poset `Ind_Σ`, unrelated to
+powers). Mandatory pre-submission checks (zbMATH/MathSciNet; full text of
+Choffrut and Duchamp–Krob in *The Book of Traces*; forward citations of
+Lohrey–Stober–Weiß 2022–2024) are **unperformed**.
