@@ -12,6 +12,7 @@ class FormationHistoryEventKind(str, Enum):
     FORMATION_CONTRACT_COMMIT = "formation-contract-commit"
     SELECTION_POOL_COMMIT = "selection-pool-commit"
     BLIND_SEED_COMMIT = "blind-seed-commit"
+    SELECTION_SOURCE_CLOSURE_COMMIT = "selection-source-closure-commit"
     SELECTION_SOURCE_COMMIT = "selection-source-commit"
     SELECTION_CAPABILITY_AVAILABLE = "selection-capability-available"
     HISTORY_PLAN_COMMIT = "history-plan-commit"
@@ -43,6 +44,7 @@ class P3OGFormationHistoryPlan:
     selection_source_digest: str
     selection_pool_digest: str
     blind_seed_digest: str
+    selection_source_closure_digest: str
     available_capability_digest: str
     lineage_id: str
     scope_digest: str

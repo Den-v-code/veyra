@@ -51,10 +51,10 @@ from .prime_power_observer_genesis_p3og_one_shot_selection_validation import (
 )
 from .prime_power_observer_genesis_p3og_types import P3OGSource
 
-PLAN_VERSION = "p3og-formation-history-plan-v3"
-EVIDENCE_VERSION = "p3og-formation-history-evidence-v3"
+PLAN_VERSION = "p3og-formation-history-plan-v4"
+EVIDENCE_VERSION = "p3og-formation-history-evidence-v4"
 GRAPH_RULE_ID = (
-    "available-consume-terminal-formation-closure-future-seal-v3"
+    "declared-source-closure-available-consume-terminal-formation-closure-future-seal-v4"
 )
 MAX_EVENTS = 256
 MAX_PARENTS_PER_EVENT = 8
@@ -208,6 +208,7 @@ def p3og_formation_history_plan(
         selection_source.source_digest,
         selection_source.pool_digest,
         selection_source.blind_seed_digest,
+        selection_source.source_closure.closure_digest,
         available_capability.capability_digest,
         lineage_id,
         scope_digest,
@@ -372,7 +373,7 @@ def build_p3og_formation_history_evidence(
         raise ValueError("p3og-formation-history-refuted-future-seal")
     if len(formation_evidence.ticks) > formation_source.max_formation_ticks:
         raise ValueError("p3og-formation-history-tick-limit")
-    required_events = len(formation_evidence.ticks) + (14 if witnessed else 12)
+    required_events = len(formation_evidence.ticks) + (15 if witnessed else 13)
     if required_events > plan.max_events:
         raise ValueError("p3og-formation-history-event-limit")
 
@@ -433,10 +434,16 @@ def build_p3og_formation_history_evidence(
         (pool_id,),
         formation_source.selection_source.blind_seed_digest,
     )
+    selection_closure_id = add(
+        "selection-source-closure",
+        FormationHistoryEventKind.SELECTION_SOURCE_CLOSURE_COMMIT,
+        (blind_seed_id,),
+        formation_source.selection_source.source_closure.closure_digest,
+    )
     selection_source_id = add(
         "selection-source",
         FormationHistoryEventKind.SELECTION_SOURCE_COMMIT,
-        (blind_seed_id,),
+        (selection_closure_id,),
         formation_source.selection_source.source_digest,
     )
     available_id = add(
@@ -514,6 +521,7 @@ def build_p3og_formation_history_evidence(
         formation_contract_id,
         pool_id,
         blind_seed_id,
+        selection_closure_id,
         selection_source_id,
         available_id,
         plan_id,

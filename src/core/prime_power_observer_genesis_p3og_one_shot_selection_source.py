@@ -8,11 +8,16 @@ from hmac import compare_digest
 from .prime_power_observer_genesis_p3og_codec import canonical_bytes, digest
 from .prime_power_observer_genesis_p3og_one_shot_selection_types import (
     P3OGOneShotSelectionSource,
+    P3OGSelectionSourceClosure,
+)
+from .prime_power_observer_genesis_p3og_selection_source_closure import (
+    p3og_selection_source_closure,
+    validate_p3og_selection_source_closure,
 )
 from .prime_power_observer_genesis_p3og_source import validate_source
 from .prime_power_observer_genesis_p3og_types import P3OGSource
 
-ONE_SHOT_SELECTION_SOURCE_VERSION = "p3og-one-shot-selection-source-v1"
+ONE_SHOT_SELECTION_SOURCE_VERSION = "p3og-one-shot-selection-source-v2"
 ONE_SHOT_SELECTOR_RULE_ID = "blind-pool-seed-mod-v1"
 ONE_SHOT_CAPABILITY_RULE_ID = "available-to-consumed-no-return-v1"
 _HEX = frozenset("0123456789abcdef")
@@ -33,6 +38,7 @@ def _pool_digest(source: P3OGSource) -> str:
 def p3og_one_shot_selection_source(
     source: P3OGSource,
     blind_seed_digest: str,
+    source_closure: P3OGSelectionSourceClosure | None = None,
 ) -> P3OGOneShotSelectionSource:
     """Commit Pool, BlindSeed, selector law, and one bounded capability identity."""
     source = validate_source(source)
@@ -41,6 +47,14 @@ def p3og_one_shot_selection_source(
         "p3og-one-shot-selection-blind-seed-digest",
     )
     pool_digest = _pool_digest(source)
+    if source_closure is None:
+        source_closure = p3og_selection_source_closure(source, blind_seed_digest)
+    else:
+        source_closure = validate_p3og_selection_source_closure(
+            source,
+            blind_seed_digest,
+            source_closure,
+        )
     capability_id = digest(
         "one-shot-selection-capability-id",
         source.source_digest,
@@ -48,6 +62,7 @@ def p3og_one_shot_selection_source(
         blind_seed_digest,
         ONE_SHOT_SELECTOR_RULE_ID,
         ONE_SHOT_CAPABILITY_RULE_ID,
+        source_closure.closure_digest,
     )
     fields = (
         ONE_SHOT_SELECTION_SOURCE_VERSION,
@@ -57,6 +72,7 @@ def p3og_one_shot_selection_source(
         blind_seed_digest,
         ONE_SHOT_SELECTOR_RULE_ID,
         ONE_SHOT_CAPABILITY_RULE_ID,
+        source_closure,
         capability_id,
     )
     return P3OGOneShotSelectionSource(
@@ -80,6 +96,7 @@ def validate_p3og_one_shot_selection_source(
                 selection_source.blind_seed_digest,
                 "p3og-one-shot-selection-blind-seed-digest",
             ),
+            selection_source.source_closure,
         )
         equal = compare_digest(
             canonical_bytes(selection_source),

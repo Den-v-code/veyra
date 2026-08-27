@@ -104,7 +104,8 @@ def test_formation_contract_is_committed_before_selection() -> None:
     )
     ids = tuple(event.event_id for event in evidence.events)
     assert ids.index("formation-contract") < ids.index("selection-consume")
-    assert ids.index("blind-seed") < ids.index("selection-consume")
+    assert ids.index("blind-seed") < ids.index("selection-source-closure")
+    assert ids.index("selection-source-closure") < ids.index("selection-consume")
     assert ids.index("selection-pool") < ids.index("selection-consume")
     assert ids.index("selection-capability-available") < ids.index(
         "selection-consume"
@@ -114,13 +115,14 @@ def test_formation_contract_is_committed_before_selection() -> None:
     )
     assert "formation-contract" in evidence.strict_past_event_ids
     assert "blind-seed" in evidence.strict_past_event_ids
+    assert "selection-source-closure" in evidence.strict_past_event_ids
     assert "selection-pool" in evidence.strict_past_event_ids
     assert "selection-capability-available" in evidence.strict_past_event_ids
     assert "selection-consume" in evidence.strict_past_event_ids
     assert "selection-capability-consumed" in evidence.strict_past_event_ids
     assert "decisive-criterion" in evidence.future_event_ids
     assert "later-result" in evidence.future_event_ids
-    assert len(evidence.events) == len(formation.ticks) + 14
+    assert len(evidence.events) == len(formation.ticks) + 15
     assert plan.max_events == 256
     assert plan.max_parents_per_event == 8
     plan_fields = {field.name for field in fields(plan)}
@@ -268,7 +270,7 @@ def test_refuted_selected_seed_is_preserved_without_retry_or_future_seals() -> N
     assert evidence.later_result_event_id is None
     assert evidence.future_event_ids == ()
     assert "selection-consume" in evidence.strict_past_event_ids
-    assert len(evidence.events) == len(formation.ticks) + 12
+    assert len(evidence.events) == len(formation.ticks) + 13
     rebuilt = validate_p3og_formation_history_evidence(
         source,
         autonomous,

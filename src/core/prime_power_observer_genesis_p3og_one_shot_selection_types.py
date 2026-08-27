@@ -6,6 +6,45 @@ from dataclasses import dataclass
 from enum import Enum
 
 
+class SelectionDependencyKind(str, Enum):
+    """Declared provenance kinds for bounded selection-source closure."""
+
+    PRESSURE_SOURCE = "pressure-source"
+    POOL = "pool"
+    BLIND_SEED = "blind-seed"
+    SELECTOR_LAW = "selector-law"
+    TRANSFORM = "transform"
+    DISCRIMINATION_CRITERION = "discrimination-criterion"
+    TARGET = "target"
+    SELECTED_RESPONSE = "selected-response"
+    LATER_STATUS = "later-status"
+    THEOREM_CONCLUSION = "theorem-conclusion"
+
+
+@dataclass(frozen=True)
+class P3OGSelectionDependencyNode:
+    """One declared dependency node; parents are source dependencies."""
+
+    node_id: str
+    kind: SelectionDependencyKind
+    parent_ids: tuple[str, ...]
+    payload_digest: str
+    node_digest: str
+
+
+@dataclass(frozen=True)
+class P3OGSelectionSourceClosure:
+    """Graph-derived transitive closure for Pool/BlindSeed/SelectorLaw roots."""
+
+    version: str
+    pressure_source_digest: str
+    nodes: tuple[P3OGSelectionDependencyNode, ...]
+    root_ids: tuple[str, ...]
+    closure_node_ids: tuple[str, ...]
+    forbidden_node_ids: tuple[str, ...]
+    closure_digest: str
+
+
 class SelectionCapabilityState(str, Enum):
     """Replayable capability state for one bounded selection trace."""
 
@@ -24,6 +63,7 @@ class P3OGOneShotSelectionSource:
     blind_seed_digest: str
     selector_rule_id: str
     capability_rule_id: str
+    source_closure: P3OGSelectionSourceClosure
     capability_id: str
     source_digest: str
 
@@ -54,7 +94,8 @@ class P3OGOneShotSelectionReceipt:
 P3OG_ONE_SHOT_SELECTION_NONCLAIMS = (
     "full-def-og-002-discharge",
     "historical-strict-past-commitment",
-    "transitive-source-closure-blindness",
+    "undeclared-or-out-of-band-source-dependency-blindness",
+    "externally-authenticated-dependency-completeness",
     "process-global-unforgeable-linear-capability",
     "copied-available-value-anti-replay",
     "criterion-or-result-truth",
