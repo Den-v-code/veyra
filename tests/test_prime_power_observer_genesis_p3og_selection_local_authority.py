@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+import src.core.prime_power_observer_genesis_p3og_selection_local_authority as authority_module
+
 from src.core.prime_power_observer_genesis_p3og import TransitionKind, p3og_source
 from src.core.prime_power_observer_genesis_p3og_one_shot_selection import (
     P3OG_SELECTION_LOCAL_AUTHORITY_BOUNDARY,
@@ -222,3 +224,69 @@ def test_forged_evidence_or_store_drift_is_rejected(tmp_path: Path) -> None:
             selection,
             forged,
         )
+
+
+def test_selector_is_invoked_only_after_atomic_claim(tmp_path: Path, monkeypatch) -> None:
+    source, selection_source, available = _fixture()
+    directory = _secure(tmp_path / "authority")
+    secret = b"o" * 32
+    reserve_p3og_selection_local_authority(
+        directory, source, selection_source, available, "selection-1", secret
+    )
+    original = authority_module.consume_p3og_selection_capability
+    observed: list[P3OGSelectionLocalAuthorityState] = []
+
+    def guarded_consume(*args, **kwargs):
+        state = read_p3og_selection_local_authority(directory).state
+        observed.append(state)
+        assert state is P3OGSelectionLocalAuthorityState.CLAIMED
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(
+        authority_module,
+        "consume_p3og_selection_capability",
+        guarded_consume,
+    )
+    consume_p3og_selection_capability_locally(
+        directory,
+        source,
+        selection_source,
+        available,
+        "selection-1",
+        secret,
+        "attempt-1",
+    )
+    assert observed == [P3OGSelectionLocalAuthorityState.CLAIMED]
+
+
+def test_cross_store_repeat_is_explicitly_outside_local_authority_claim(tmp_path: Path) -> None:
+    source, selection_source, available = _fixture()
+    first = _secure(tmp_path / "first")
+    second = _secure(tmp_path / "second")
+    secret = b"s" * 32
+    for directory in (first, second):
+        reserve_p3og_selection_local_authority(
+            directory, source, selection_source, available, "selection-1", secret
+        )
+    first_result = consume_p3og_selection_capability_locally(
+        first,
+        source,
+        selection_source,
+        available,
+        "selection-1",
+        secret,
+        "attempt-1",
+    )
+    second_result = consume_p3og_selection_capability_locally(
+        second,
+        source,
+        selection_source,
+        available,
+        "selection-1",
+        secret,
+        "attempt-2",
+    )
+    assert first_result[2] == second_result[2]
+    assert first_result[3].terminal.state is P3OGSelectionLocalAuthorityState.CONSUMED
+    assert second_result[3].terminal.state is P3OGSelectionLocalAuthorityState.CONSUMED
+    assert "cross-store uniqueness" in P3OG_SELECTION_LOCAL_AUTHORITY_BOUNDARY

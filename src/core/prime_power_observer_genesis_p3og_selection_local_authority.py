@@ -252,6 +252,8 @@ def validate_p3og_selection_local_authority(
     evidence: P3OGSelectionLocalAuthorityEvidence,
 ) -> P3OGSelectionLocalAuthorityEvidence:
     """Freshly validate the immutable chain and the current protected store terminal."""
+    if type(evidence) is not P3OGSelectionLocalAuthorityEvidence:
+        _reject("p3og-selection-local-authority-evidence-type")
     source = validate_source(source)
     _, selection_source = _validated_selection_source(source, selection_source)
     expected_reservation = p3og_selection_local_authority_reservation(
@@ -269,8 +271,6 @@ def validate_p3og_selection_local_authority(
     )
     if expected_consumed != consumed or expected_selection != selection:
         _reject("p3og-selection-local-authority-selection-drift")
-    if type(evidence) is not P3OGSelectionLocalAuthorityEvidence:
-        _reject("p3og-selection-local-authority-evidence-type")
     for receipt in (evidence.reserved, evidence.claimed, evidence.terminal):
         if not validate_p3og_selection_local_authority_receipt(receipt):
             _reject("p3og-selection-local-authority-receipt-invalid")
@@ -342,10 +342,15 @@ def _authority_evidence(
         selection_receipt_digest,
         P3OG_SELECTION_LOCAL_AUTHORITY_BOUNDARY,
     )
-    return P3OGSelectionLocalAuthorityEvidence(
-        *fields,
-        digest("selection-local-authority-evidence", *fields),
+    evidence_digest = digest(
+        "selection-local-authority-evidence",
+        reserved.receipt_digest,
+        claimed.receipt_digest,
+        terminal.receipt_digest,
+        selection_receipt_digest,
+        P3OG_SELECTION_LOCAL_AUTHORITY_BOUNDARY,
     )
+    return P3OGSelectionLocalAuthorityEvidence(*fields, evidence_digest)
 
 
 @contextmanager
