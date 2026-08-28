@@ -232,6 +232,110 @@ def test_preterminal_event_source_closure_cannot_reference_future_criterion() ->
         )
 
 
+def test_reduced_event_source_closure_cannot_be_rehashed_and_self_reblessed() -> None:
+    source, autonomous, formation_source, formation, plan = _fixture()
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        "a" * 64,
+        "b" * 64,
+    )
+    order = {event.event_id: index for index, event in enumerate(evidence.events)}
+    forged_events: list[FormationHistoryEvent] = []
+    for original in evidence.events:
+        direct = original.source_closure.direct_source_event_ids
+        if original.event_id == "selection-consume":
+            direct = ("selection-source",)
+        table = {event.event_id: event for event in forged_events}
+        closed: set[str] = set()
+        for name in direct:
+            closed.add(name)
+            closed.update(table[name].source_closure.transitive_source_event_ids)
+        transitive = tuple(sorted(closed, key=order.__getitem__))
+        closure_fields = (plan.plan_digest, original.event_id, direct, transitive)
+        forged_closure = FormationHistoryEventSourceClosure(
+            *closure_fields,
+            formation_history_digest(
+                "formation-history-event-source-closure",
+                *closure_fields,
+            ),
+        )
+        event_fields = (
+            original.event_id,
+            original.kind,
+            original.parent_ids,
+            forged_closure,
+            original.logical_time,
+            original.lineage_id,
+            original.scope_digest,
+            original.payload_digest,
+        )
+        forged_events.append(
+            replace(
+                original,
+                source_closure=forged_closure,
+                event_digest=formation_history_digest(
+                    "formation-history-event",
+                    *event_fields,
+                ),
+            )
+        )
+
+    captured = tuple(forged_events)
+    ancestry = formation_history_digest(
+        "formation-history-ancestry",
+        plan.plan_digest,
+        formation_source.source_digest,
+        formation.evidence_digest,
+        captured,
+        evidence.formation_terminal_event_id,
+        evidence.strict_past_event_ids,
+        evidence.future_event_ids,
+    )
+    evidence_fields = (
+        evidence.version,
+        evidence.plan_digest,
+        evidence.formation_source_digest,
+        evidence.formation_evidence_digest,
+        evidence.criterion_payload_digest,
+        evidence.later_result_payload_digest,
+        captured,
+        evidence.formation_terminal_event_id,
+        evidence.closure_event_id,
+        evidence.criterion_event_id,
+        evidence.later_result_event_id,
+        evidence.strict_past_event_ids,
+        evidence.future_event_ids,
+        evidence.status,
+        ancestry,
+        evidence.promotions,
+        evidence.nonclaims,
+    )
+    forged = replace(
+        evidence,
+        events=captured,
+        ancestry_digest=ancestry,
+        evidence_digest=formation_history_digest(
+            "formation-history-evidence",
+            *evidence_fields,
+        ),
+    )
+    with pytest.raises(ValueError, match="evidence-drift"):
+        validate_p3og_formation_history_evidence(
+            source,
+            autonomous,
+            plan,
+            formation_source,
+            formation,
+            "a" * 64,
+            "b" * 64,
+            forged,
+        )
+
+
 def test_event_source_closure_cannot_be_spliced_across_event_identity() -> None:
     source, autonomous, formation_source, formation, plan = _fixture()
     evidence = build_p3og_formation_history_evidence(
