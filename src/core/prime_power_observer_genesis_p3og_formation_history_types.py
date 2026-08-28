@@ -12,6 +12,7 @@ class FormationHistoryEventKind(str, Enum):
     FORMATION_CONTRACT_COMMIT = "formation-contract-commit"
     SELECTION_POOL_COMMIT = "selection-pool-commit"
     BLIND_SEED_COMMIT = "blind-seed-commit"
+    SELECTOR_LAW_COMMIT = "selector-law-commit"
     SELECTION_SOURCE_CLOSURE_COMMIT = "selection-source-closure-commit"
     SELECTION_SOURCE_COMMIT = "selection-source-commit"
     SELECTION_CAPABILITY_AVAILABLE = "selection-capability-available"
@@ -51,7 +52,19 @@ class P3OGFormationHistoryPlan:
     graph_rule_id: str
     max_events: int
     max_parents_per_event: int
+    max_sources_per_event: int
     plan_digest: str
+
+
+@dataclass(frozen=True)
+class FormationHistoryEventSourceClosure:
+    """Exact closure of the event's declared in-history information sources."""
+
+    plan_digest: str
+    event_id: str
+    direct_source_event_ids: tuple[str, ...]
+    transitive_source_event_ids: tuple[str, ...]
+    closure_digest: str
 
 
 @dataclass(frozen=True)
@@ -59,6 +72,7 @@ class FormationHistoryEvent:
     event_id: str
     kind: FormationHistoryEventKind
     parent_ids: tuple[str, ...]
+    source_closure: FormationHistoryEventSourceClosure
     logical_time: int
     lineage_id: str
     scope_digest: str
@@ -99,6 +113,8 @@ P3OG_FORMATION_HISTORY_NONCLAIMS = (
     "full-def-og-002-discharge",
     "full-def-og-003-discharge",
     "full-def-og-009-discharge",
+    "externally-authenticated-event-source-dependency-completeness",
+    "undeclared-or-out-of-band-event-source-dependencies",
     "semantic-nonderivability-of-future-seals",
     "declared-doctrine-or-external-semantic-scope",
     "primitive-rez-nod-tact-breath-genealogy",

@@ -20,6 +20,7 @@ from .prime_power_observer_genesis_p3og_formation_history_codec import (
 from .prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
     FormationHistoryEventKind,
+    FormationHistoryEventSourceClosure,
     FormationHistoryStatus,
     P3OGFormationHistoryEvidence,
     P3OGFormationHistoryPlan,
@@ -49,15 +50,19 @@ from .prime_power_observer_genesis_p3og_one_shot_selection_types import (
 from .prime_power_observer_genesis_p3og_one_shot_selection_validation import (
     validate_p3og_selection_capability,
 )
+from .prime_power_observer_genesis_p3og_selection_source_closure import (
+    selector_law_digest,
+)
 from .prime_power_observer_genesis_p3og_types import P3OGSource
 
-PLAN_VERSION = "p3og-formation-history-plan-v4"
-EVIDENCE_VERSION = "p3og-formation-history-evidence-v4"
+PLAN_VERSION = "p3og-formation-history-plan-v5"
+EVIDENCE_VERSION = "p3og-formation-history-evidence-v5"
 GRAPH_RULE_ID = (
-    "declared-source-closure-available-consume-terminal-formation-closure-future-seal-v4"
+    "event-source-closure-available-consume-terminal-formation-closure-future-seal-v5"
 )
 MAX_EVENTS = 256
 MAX_PARENTS_PER_EVENT = 8
+MAX_SOURCES_PER_EVENT = 8
 
 
 def _hex_digest(value: object, reason: str) -> str:
@@ -122,6 +127,7 @@ def _preflight_history_evidence(evidence: P3OGFormationHistoryEvidence) -> None:
         result_id = evidence.later_result_event_id
         criterion_digest = evidence.criterion_payload_digest
         result_digest = evidence.later_result_payload_digest
+        plan_digest = evidence.plan_digest
     except AttributeError as exc:
         raise ValueError("p3og-formation-history-evidence-fields") from exc
     if (
@@ -141,13 +147,26 @@ def _preflight_history_evidence(evidence: P3OGFormationHistoryEvidence) -> None:
         or (result_digest is not None and type(result_digest) is not str)
         or type(evidence.status) is not FormationHistoryStatus
         or type(evidence.promotions) is not int
+        or type(plan_digest) is not str
     ):
         raise ValueError("p3og-formation-history-evidence-shape")
     for event in events:
         if type(event) is not FormationHistoryEvent:
             raise ValueError("p3og-formation-history-evidence-event-type")
+        if type(event.source_closure) is not FormationHistoryEventSourceClosure:
+            raise ValueError("p3og-formation-history-evidence-source-closure-type")
+        closure = event.source_closure
         if (
-            type(event.parent_ids) is not tuple
+            type(closure.plan_digest) is not str
+            or type(closure.event_id) is not str
+            or type(closure.direct_source_event_ids) is not tuple
+            or len(closure.direct_source_event_ids) > MAX_SOURCES_PER_EVENT
+            or any(type(item) is not str for item in closure.direct_source_event_ids)
+            or type(closure.transitive_source_event_ids) is not tuple
+            or len(closure.transitive_source_event_ids) > MAX_EVENTS
+            or any(type(item) is not str for item in closure.transitive_source_event_ids)
+            or type(closure.closure_digest) is not str
+            or type(event.parent_ids) is not tuple
             or len(event.parent_ids) > MAX_PARENTS_PER_EVENT
             or any(type(item) is not str for item in event.parent_ids)
             or type(event.event_id) is not str
@@ -161,6 +180,7 @@ def _preflight_history_evidence(evidence: P3OGFormationHistoryEvidence) -> None:
             raise ValueError("p3og-formation-history-evidence-event-shape")
     if any(type(item) is not str for item in past + future):
         raise ValueError("p3og-formation-history-evidence-id-shape")
+    _validate_event_source_closures(events, plan_digest)
 
 
 def p3og_formation_history_plan(
@@ -215,6 +235,7 @@ def p3og_formation_history_plan(
         GRAPH_RULE_ID,
         MAX_EVENTS,
         MAX_PARENTS_PER_EVENT,
+        MAX_SOURCES_PER_EVENT,
     )
     return P3OGFormationHistoryPlan(
         *fields,
@@ -250,13 +271,69 @@ def validate_formation_history_plan(
     return source, autonomous_source, replace(expected)
 
 
+def _event_source_closure(
+    plan_digest: str,
+    event_id: str,
+    direct_source_event_ids: tuple[str, ...],
+    prior_events: tuple[FormationHistoryEvent, ...],
+    max_sources_per_event: int,
+) -> FormationHistoryEventSourceClosure:
+    if (
+        type(direct_source_event_ids) is not tuple
+        or len(direct_source_event_ids) > max_sources_per_event
+        or len(direct_source_event_ids) != len(set(direct_source_event_ids))
+        or any(type(item) is not str or not item for item in direct_source_event_ids)
+        or event_id in direct_source_event_ids
+    ):
+        raise ValueError("p3og-formation-history-event-source-ids")
+    table = {event.event_id: event for event in prior_events}
+    if len(table) != len(prior_events):
+        raise ValueError("p3og-formation-history-event-source-table")
+    if any(name not in table for name in direct_source_event_ids):
+        raise ValueError("p3og-formation-history-source-future-or-unknown")
+    order = {event.event_id: index for index, event in enumerate(prior_events)}
+    closed: set[str] = set()
+    for name in direct_source_event_ids:
+        closed.add(name)
+        closed.update(table[name].source_closure.transitive_source_event_ids)
+    transitive = tuple(sorted(closed, key=order.__getitem__))
+    fields = (plan_digest, event_id, direct_source_event_ids, transitive)
+    return FormationHistoryEventSourceClosure(
+        *fields,
+        formation_history_digest("formation-history-event-source-closure", *fields),
+    )
+
+
+def _validate_event_source_closures(
+    events: tuple[FormationHistoryEvent, ...],
+    plan_digest: str,
+) -> None:
+    prior: list[FormationHistoryEvent] = []
+    for event in events:
+        closure = event.source_closure
+        if closure.plan_digest != plan_digest or closure.event_id != event.event_id:
+            raise ValueError("p3og-formation-history-source-closure-context-drift")
+        expected = _event_source_closure(
+            plan_digest,
+            event.event_id,
+            closure.direct_source_event_ids,
+            tuple(prior),
+            MAX_SOURCES_PER_EVENT,
+        )
+        if not compare_digest(canonical_bytes(closure), canonical_bytes(expected)):
+            raise ValueError("p3og-formation-history-source-closure-drift")
+        prior.append(event)
+
+
 def _event(
     plan: P3OGFormationHistoryPlan,
     event_id: str,
     kind: FormationHistoryEventKind,
     parents: tuple[str, ...],
+    source_event_ids: tuple[str, ...],
     logical_time: int,
     payload_digest: str,
+    prior_events: tuple[FormationHistoryEvent, ...],
 ) -> FormationHistoryEvent:
     if type(event_id) is not str or not event_id or len(event_id) > 128:
         raise ValueError("p3og-formation-history-event-id")
@@ -274,10 +351,18 @@ def _event(
         payload_digest,
         "p3og-formation-history-event-payload",
     )
+    source_closure = _event_source_closure(
+        plan.plan_digest,
+        event_id,
+        source_event_ids,
+        prior_events,
+        plan.max_sources_per_event,
+    )
     fields = (
         event_id,
         kind,
         parents,
+        source_closure,
         logical_time,
         plan.lineage_id,
         plan.scope_digest,
@@ -373,7 +458,7 @@ def build_p3og_formation_history_evidence(
         raise ValueError("p3og-formation-history-refuted-future-seal")
     if len(formation_evidence.ticks) > formation_source.max_formation_ticks:
         raise ValueError("p3og-formation-history-tick-limit")
-    required_events = len(formation_evidence.ticks) + (15 if witnessed else 13)
+    required_events = len(formation_evidence.ticks) + (16 if witnessed else 14)
     if required_events > plan.max_events:
         raise ValueError("p3og-formation-history-event-limit")
 
@@ -399,8 +484,17 @@ def build_p3og_formation_history_evidence(
 
     events: list[FormationHistoryEvent] = []
 
-    def add(event_id, kind, parents, payload):
-        event = _event(plan, event_id, kind, parents, len(events), payload)
+    def add(event_id, kind, parents, sources, payload):
+        event = _event(
+            plan,
+            event_id,
+            kind,
+            parents,
+            sources,
+            len(events),
+            payload,
+            tuple(events),
+        )
         events.append(event)
         return event.event_id
 
@@ -408,11 +502,13 @@ def build_p3og_formation_history_evidence(
         "source",
         FormationHistoryEventKind.SOURCE_COMMIT,
         (),
+        (),
         source.source_digest,
     )
     autonomous_id = add(
         "autonomous-law",
         FormationHistoryEventKind.AUTONOMOUS_LAW_COMMIT,
+        (source_id,),
         (source_id,),
         autonomous_source.source_digest,
     )
@@ -420,29 +516,41 @@ def build_p3og_formation_history_evidence(
         "formation-contract",
         FormationHistoryEventKind.FORMATION_CONTRACT_COMMIT,
         (autonomous_id,),
+        (autonomous_id,),
         plan.formation_contract_digest,
     )
     pool_id = add(
         "selection-pool",
         FormationHistoryEventKind.SELECTION_POOL_COMMIT,
         (formation_contract_id,),
+        (source_id,),
         formation_source.selection_source.pool_digest,
     )
     blind_seed_id = add(
         "blind-seed",
         FormationHistoryEventKind.BLIND_SEED_COMMIT,
         (pool_id,),
+        (),
         formation_source.selection_source.blind_seed_digest,
+    )
+    selector_law_id = add(
+        "selector-law",
+        FormationHistoryEventKind.SELECTOR_LAW_COMMIT,
+        (blind_seed_id,),
+        (),
+        selector_law_digest(),
     )
     selection_closure_id = add(
         "selection-source-closure",
         FormationHistoryEventKind.SELECTION_SOURCE_CLOSURE_COMMIT,
-        (blind_seed_id,),
+        (selector_law_id,),
+        (pool_id, blind_seed_id, selector_law_id),
         formation_source.selection_source.source_closure.closure_digest,
     )
     selection_source_id = add(
         "selection-source",
         FormationHistoryEventKind.SELECTION_SOURCE_COMMIT,
+        (selection_closure_id,),
         (selection_closure_id,),
         formation_source.selection_source.source_digest,
     )
@@ -450,23 +558,27 @@ def build_p3og_formation_history_evidence(
         "selection-capability-available",
         FormationHistoryEventKind.SELECTION_CAPABILITY_AVAILABLE,
         (selection_source_id,),
+        (selection_source_id,),
         formation_source.selection_before.capability_digest,
     )
     plan_id = add(
         "history-plan",
         FormationHistoryEventKind.HISTORY_PLAN_COMMIT,
         (available_id,),
+        (formation_contract_id, selection_source_id, available_id),
         plan.plan_digest,
     )
     selection_id = add(
         "selection-consume",
         FormationHistoryEventKind.SELECTION_CONSUME,
         (plan_id,),
+        (selection_source_id, available_id),
         formation_source.selection.receipt_digest,
     )
     consumed_id = add(
         "selection-capability-consumed",
         FormationHistoryEventKind.SELECTION_CAPABILITY_CONSUMED,
+        (selection_id,),
         (selection_id,),
         formation_source.selection_after.capability_digest,
     )
@@ -474,14 +586,21 @@ def build_p3og_formation_history_evidence(
         "formation-source",
         FormationHistoryEventKind.FORMATION_SOURCE_BIND,
         (consumed_id,),
+        (autonomous_id, selection_source_id, available_id, selection_id, consumed_id),
         formation_source.source_digest,
     )
     previous = formation_source_id
     for index, tick in enumerate(formation_evidence.ticks, start=1):
+        tick_sources = (
+            (formation_source_id,)
+            if previous == formation_source_id
+            else (formation_source_id, previous)
+        )
         previous = add(
             f"formation-tick-{index}",
             FormationHistoryEventKind.FORMATION_TICK,
             (previous,),
+            tick_sources,
             tick.receipt_digest,
         )
     terminal_id = add(
@@ -492,6 +611,11 @@ def build_p3og_formation_history_evidence(
             else FormationHistoryEventKind.FORMATION_REFUTATION
         ),
         (previous,),
+        (
+            (formation_source_id,)
+            if previous == formation_source_id
+            else (formation_source_id, previous)
+        ),
         formation_evidence.evidence_digest,
     )
     criterion_id = None
@@ -501,11 +625,13 @@ def build_p3og_formation_history_evidence(
             "decisive-criterion",
             FormationHistoryEventKind.DECISIVE_CRITERION,
             (terminal_id,),
+            (terminal_id,),
             criterion_payload_digest,
         )
         result_id = add(
             "later-result",
             FormationHistoryEventKind.LATER_RESULT,
+            (terminal_id, criterion_id),
             (terminal_id, criterion_id),
             later_result_payload_digest,
         )
@@ -521,6 +647,7 @@ def build_p3og_formation_history_evidence(
         formation_contract_id,
         pool_id,
         blind_seed_id,
+        selector_law_id,
         selection_closure_id,
         selection_source_id,
         available_id,
@@ -537,6 +664,13 @@ def build_p3og_formation_history_evidence(
         raise ValueError("p3og-formation-history-missing-formation-ancestry")
     if witnessed and (criterion_id not in future or result_id not in future):
         raise ValueError("p3og-formation-history-future-placement")
+    table = {event.event_id: event for event in captured}
+    future_seals = {item for item in (criterion_id, result_id) if item is not None}
+    for event_id in (*past, terminal_id):
+        if future_seals.intersection(
+            table[event_id].source_closure.transitive_source_event_ids
+        ):
+            raise ValueError("p3og-formation-history-future-source-leak")
     if refuted and future:
         raise ValueError("p3og-formation-history-refuted-future")
 

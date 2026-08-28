@@ -17,8 +17,12 @@ from src.core.prime_power_observer_genesis_p3og_formation_history import (
     p3og_formation_history_plan,
     validate_p3og_formation_history_evidence,
 )
+from src.core.prime_power_observer_genesis_p3og_formation_history_codec import (
+    formation_history_digest,
+)
 from src.core.prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
+    FormationHistoryEventSourceClosure,
     FormationHistoryStatus,
 )
 from src.core.prime_power_observer_genesis_p3og_native_formation import (
@@ -104,7 +108,8 @@ def test_formation_contract_is_committed_before_selection() -> None:
     )
     ids = tuple(event.event_id for event in evidence.events)
     assert ids.index("formation-contract") < ids.index("selection-consume")
-    assert ids.index("blind-seed") < ids.index("selection-source-closure")
+    assert ids.index("blind-seed") < ids.index("selector-law")
+    assert ids.index("selector-law") < ids.index("selection-source-closure")
     assert ids.index("selection-source-closure") < ids.index("selection-consume")
     assert ids.index("selection-pool") < ids.index("selection-consume")
     assert ids.index("selection-capability-available") < ids.index(
@@ -115,6 +120,7 @@ def test_formation_contract_is_committed_before_selection() -> None:
     )
     assert "formation-contract" in evidence.strict_past_event_ids
     assert "blind-seed" in evidence.strict_past_event_ids
+    assert "selector-law" in evidence.strict_past_event_ids
     assert "selection-source-closure" in evidence.strict_past_event_ids
     assert "selection-pool" in evidence.strict_past_event_ids
     assert "selection-capability-available" in evidence.strict_past_event_ids
@@ -122,9 +128,10 @@ def test_formation_contract_is_committed_before_selection() -> None:
     assert "selection-capability-consumed" in evidence.strict_past_event_ids
     assert "decisive-criterion" in evidence.future_event_ids
     assert "later-result" in evidence.future_event_ids
-    assert len(evidence.events) == len(formation.ticks) + 15
+    assert len(evidence.events) == len(formation.ticks) + 16
     assert plan.max_events == 256
     assert plan.max_parents_per_event == 8
+    assert plan.max_sources_per_event == 8
     plan_fields = {field.name for field in fields(plan)}
     assert "selected_seed_digest" not in plan_fields
     assert "selection_receipt_digest" not in plan_fields
@@ -141,6 +148,118 @@ def test_formation_contract_is_committed_before_selection() -> None:
     assert "birth-core-or-historical-token" in evidence.nonclaims
     assert "n0-or-hap-lift" in evidence.nonclaims
     assert "historical-actualization" in evidence.nonclaims
+    assert "externally-authenticated-event-source-dependency-completeness" in evidence.nonclaims
+
+
+def test_event_source_closure_is_graph_derived_and_distinct_from_causal_parentage() -> None:
+    source, autonomous, formation_source, formation, plan = _fixture()
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        "a" * 64,
+        "b" * 64,
+    )
+    table = {event.event_id: event for event in evidence.events}
+    consume = table["selection-consume"]
+    assert consume.parent_ids == ("history-plan",)
+    assert consume.source_closure.direct_source_event_ids == (
+        "selection-source",
+        "selection-capability-available",
+    )
+    assert "selector-law" in consume.source_closure.transitive_source_event_ids
+    assert "blind-seed" in consume.source_closure.transitive_source_event_ids
+    assert "selection-pool" in consume.source_closure.transitive_source_event_ids
+    assert "source" in consume.source_closure.transitive_source_event_ids
+    for event in evidence.events:
+        assert event.source_closure.plan_digest == plan.plan_digest
+        assert event.source_closure.event_id == event.event_id
+        assert event.event_id not in event.source_closure.transitive_source_event_ids
+
+
+def test_preterminal_event_source_closure_cannot_reference_future_criterion() -> None:
+    source, autonomous, formation_source, formation, plan = _fixture()
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        "a" * 64,
+        "b" * 64,
+    )
+    events = list(evidence.events)
+    index = next(i for i, event in enumerate(events) if event.event_id == "selection-consume")
+    event = events[index]
+    direct = ("decisive-criterion",)
+    transitive = ("decisive-criterion",)
+    closure_fields = (plan.plan_digest, event.event_id, direct, transitive)
+    forged_closure = FormationHistoryEventSourceClosure(
+        *closure_fields,
+        formation_history_digest(
+            "formation-history-event-source-closure",
+            *closure_fields,
+        ),
+    )
+    event_fields = (
+        event.event_id,
+        event.kind,
+        event.parent_ids,
+        forged_closure,
+        event.logical_time,
+        event.lineage_id,
+        event.scope_digest,
+        event.payload_digest,
+    )
+    events[index] = replace(
+        event,
+        source_closure=forged_closure,
+        event_digest=formation_history_digest("formation-history-event", *event_fields),
+    )
+    forged = replace(evidence, events=tuple(events))
+    with pytest.raises(ValueError, match="source-future-or-unknown"):
+        validate_p3og_formation_history_evidence(
+            source,
+            autonomous,
+            plan,
+            formation_source,
+            formation,
+            "a" * 64,
+            "b" * 64,
+            forged,
+        )
+
+
+def test_event_source_closure_cannot_be_spliced_across_event_identity() -> None:
+    source, autonomous, formation_source, formation, plan = _fixture()
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        "a" * 64,
+        "b" * 64,
+    )
+    events = list(evidence.events)
+    source_event = next(event for event in events if event.event_id == "source")
+    pool_index = next(i for i, event in enumerate(events) if event.event_id == "selection-pool")
+    pool_event = events[pool_index]
+    events[pool_index] = replace(pool_event, source_closure=source_event.source_closure)
+    forged = replace(evidence, events=tuple(events))
+    with pytest.raises(ValueError, match="source-closure-context-drift"):
+        validate_p3og_formation_history_evidence(
+            source,
+            autonomous,
+            plan,
+            formation_source,
+            formation,
+            "a" * 64,
+            "b" * 64,
+            forged,
+        )
 
 
 def test_future_seal_cannot_be_preloaded_in_preclosure_digest_inventory() -> None:
@@ -270,7 +389,7 @@ def test_refuted_selected_seed_is_preserved_without_retry_or_future_seals() -> N
     assert evidence.later_result_event_id is None
     assert evidence.future_event_ids == ()
     assert "selection-consume" in evidence.strict_past_event_ids
-    assert len(evidence.events) == len(formation.ticks) + 13
+    assert len(evidence.events) == len(formation.ticks) + 14
     rebuilt = validate_p3og_formation_history_evidence(
         source,
         autonomous,
