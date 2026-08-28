@@ -24,6 +24,13 @@ class FormationHistoryEventKind(str, Enum):
     FORMATION_TICK = "formation-tick"
     FIRST_CLOSURE = "first-closure"
     FORMATION_REFUTATION = "formation-refutation"
+    SEMANTIC_FIRST_CLOSURE = "semantic-first-closure"
+    ARITHMETIC_INPUT_SOURCE = "arithmetic-input-source"
+    ARITHMETIC_COUPLING = "arithmetic-coupling"
+    RETAINED_DIFFERENCE = "retained-difference"
+    RESIDUE_PHASE_EFFECT = "residue-phase-effect"
+    TYPED_ABLATION = "typed-ablation"
+    REMOVAL_DEPENDENCE = "removal-dependence"
     DECISIVE_CRITERION = "decisive-criterion"
     LATER_RESULT = "later-result"
 
@@ -43,6 +50,19 @@ class FormationHistoryPrecommitment:
     payload_digest: str
     direct_source_event_ids: tuple[str, ...]
     commitment_digest: str
+
+
+@dataclass(frozen=True)
+class FormationHistoryPostClosureBindings:
+    """Exact post-closure payloads inserted into the existing v6 DAG."""
+
+    semantic_first_closure_digest: str
+    arithmetic_input_source_digest: str
+    arithmetic_coupling_digest: str
+    retained_difference_digest: str
+    residue_phase_effect_digest: str
+    typed_ablation_digest: str
+    removal_dependence_digest: str
 
 
 @dataclass(frozen=True)

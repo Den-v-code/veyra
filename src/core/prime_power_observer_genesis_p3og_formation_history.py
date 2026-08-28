@@ -21,6 +21,7 @@ from .prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
     FormationHistoryEventKind,
     FormationHistoryEventSourceClosure,
+    FormationHistoryPostClosureBindings,
     FormationHistoryPrecommitment,
     FormationHistoryStatus,
     P3OGFormationHistoryEvidence,
@@ -82,6 +83,13 @@ _RESERVED_PRECOMMITMENT_EVENT_IDS = frozenset({
     "formation-source",
     "first-closure",
     "formation-refutation",
+    "semantic-first-closure",
+    "arithmetic-input-source",
+    "arithmetic-coupling",
+    "retained-difference",
+    "residue-phase-effect",
+    "typed-ablation",
+    "removal-dependence",
     "decisive-criterion",
     "later-result",
 })
@@ -95,6 +103,31 @@ def _hex_digest(value: object, reason: str) -> str:
     except ValueError as exc:
         raise ValueError(reason) from exc
     return value
+
+
+def _validated_postclosure_bindings(
+    bindings: FormationHistoryPostClosureBindings | None,
+) -> FormationHistoryPostClosureBindings | None:
+    """Validate one fixed post-closure payload bundle without inventing a new DAG."""
+    if bindings is None:
+        return None
+    if type(bindings) is not FormationHistoryPostClosureBindings:
+        raise ValueError("p3og-formation-history-postclosure-bindings-type")
+    fields = (
+        ("semantic-first-closure", bindings.semantic_first_closure_digest),
+        ("arithmetic-input-source", bindings.arithmetic_input_source_digest),
+        ("arithmetic-coupling", bindings.arithmetic_coupling_digest),
+        ("retained-difference", bindings.retained_difference_digest),
+        ("residue-phase-effect", bindings.residue_phase_effect_digest),
+        ("typed-ablation", bindings.typed_ablation_digest),
+        ("removal-dependence", bindings.removal_dependence_digest),
+    )
+    for label, digest_value in fields:
+        _hex_digest(
+            digest_value,
+            f"p3og-formation-history-postclosure-{label}-digest",
+        )
+    return bindings
 
 
 def _formation_contract_digest(
@@ -522,6 +555,7 @@ def build_p3og_formation_history_evidence(
     formation_evidence: P3OGNativeFormationEvidence,
     criterion_payload_digest: str | None,
     later_result_payload_digest: str | None,
+    postclosure_bindings: FormationHistoryPostClosureBindings | None = None,
 ) -> P3OGFormationHistoryEvidence:
     """Preserve one consumed choice through witnessed or refuted formation."""
     source, autonomous_source, formation_source = validate_native_formation_source(
@@ -546,6 +580,9 @@ def build_p3og_formation_history_evidence(
     refuted = formation_evidence.status is NativeFormationStatus.REFUTED
     if not witnessed and not refuted:
         raise ValueError("p3og-formation-history-formation-status")
+    postclosure_bindings = _validated_postclosure_bindings(postclosure_bindings)
+    if refuted and postclosure_bindings is not None:
+        raise ValueError("p3og-formation-history-refuted-postclosure")
     if witnessed:
         criterion_payload_digest = _hex_digest(
             criterion_payload_digest,
@@ -563,6 +600,7 @@ def build_p3og_formation_history_evidence(
         len(formation_evidence.ticks)
         + len(plan.preselection_commitments)
         + (16 if witnessed else 14)
+        + (7 if postclosure_bindings is not None else 0)
     )
     if required_events > plan.max_events:
         raise ValueError("p3og-formation-history-event-limit")
@@ -586,6 +624,18 @@ def build_p3og_formation_history_evidence(
         or later_result_payload_digest in preterminal_digests
     ):
         raise ValueError("p3og-formation-history-future-seal-preloaded")
+    if postclosure_bindings is not None:
+        postclosure_digests = (
+            postclosure_bindings.semantic_first_closure_digest,
+            postclosure_bindings.arithmetic_input_source_digest,
+            postclosure_bindings.arithmetic_coupling_digest,
+            postclosure_bindings.retained_difference_digest,
+            postclosure_bindings.residue_phase_effect_digest,
+            postclosure_bindings.typed_ablation_digest,
+            postclosure_bindings.removal_dependence_digest,
+        )
+        if any(item in preterminal_digests for item in postclosure_digests):
+            raise ValueError("p3og-formation-history-postclosure-preloaded")
 
     events: list[FormationHistoryEvent] = []
 
@@ -740,21 +790,94 @@ def build_p3og_formation_history_evidence(
         ),
         formation_evidence.evidence_digest,
     )
+    postclosure_ids: list[str] = []
+    future_parent = terminal_id
+    if postclosure_bindings is not None:
+        commitment_ids = {
+            item.commitment_id for item in plan.preselection_commitments
+        }
+        required_commitments = {
+            "semantic-formation-bridge-contract",
+            "semantic-ablation-contract",
+            "semantic-intervention-plan",
+        }
+        if not required_commitments.issubset(commitment_ids):
+            raise ValueError(
+                "p3og-formation-history-postclosure-missing-precommitments",
+            )
+        semantic_bridge_id = add(
+            "semantic-first-closure",
+            FormationHistoryEventKind.SEMANTIC_FIRST_CLOSURE,
+            (future_parent,),
+            (terminal_id, "semantic-formation-bridge-contract"),
+            postclosure_bindings.semantic_first_closure_digest,
+        )
+        postclosure_ids.append(semantic_bridge_id)
+        arithmetic_id = add(
+            "arithmetic-input-source",
+            FormationHistoryEventKind.ARITHMETIC_INPUT_SOURCE,
+            (semantic_bridge_id,),
+            (source_id,),
+            postclosure_bindings.arithmetic_input_source_digest,
+        )
+        postclosure_ids.append(arithmetic_id)
+        coupling_id = add(
+            "arithmetic-coupling",
+            FormationHistoryEventKind.ARITHMETIC_COUPLING,
+            (arithmetic_id,),
+            (semantic_bridge_id, arithmetic_id),
+            postclosure_bindings.arithmetic_coupling_digest,
+        )
+        postclosure_ids.append(coupling_id)
+        ablation_id = add(
+            "typed-ablation",
+            FormationHistoryEventKind.TYPED_ABLATION,
+            (coupling_id,),
+            (coupling_id, "semantic-ablation-contract"),
+            postclosure_bindings.typed_ablation_digest,
+        )
+        postclosure_ids.append(ablation_id)
+        retained_id = add(
+            "retained-difference",
+            FormationHistoryEventKind.RETAINED_DIFFERENCE,
+            (coupling_id,),
+            (coupling_id, "semantic-intervention-plan"),
+            postclosure_bindings.retained_difference_digest,
+        )
+        postclosure_ids.append(retained_id)
+        phase_id = add(
+            "residue-phase-effect",
+            FormationHistoryEventKind.RESIDUE_PHASE_EFFECT,
+            (retained_id,),
+            (retained_id,),
+            postclosure_bindings.residue_phase_effect_digest,
+        )
+        postclosure_ids.append(phase_id)
+        removal_id = add(
+            "removal-dependence",
+            FormationHistoryEventKind.REMOVAL_DEPENDENCE,
+            (phase_id, ablation_id),
+            (phase_id, ablation_id),
+            postclosure_bindings.removal_dependence_digest,
+        )
+        postclosure_ids.append(removal_id)
+        future_parent = removal_id
+
     criterion_id = None
     result_id = None
     if witnessed:
         criterion_id = add(
             "decisive-criterion",
             FormationHistoryEventKind.DECISIVE_CRITERION,
-            (terminal_id,),
+            (future_parent,),
             (),
             criterion_payload_digest,
         )
         result_id = add(
             "later-result",
             FormationHistoryEventKind.LATER_RESULT,
-            (terminal_id, criterion_id),
-            (terminal_id, criterion_id),
+            (future_parent, criterion_id),
+            (future_parent, criterion_id),
             later_result_payload_digest,
         )
     captured = tuple(events)
@@ -787,6 +910,8 @@ def build_p3og_formation_history_evidence(
         raise ValueError("p3og-formation-history-missing-formation-ancestry")
     if witnessed and (criterion_id not in future or result_id not in future):
         raise ValueError("p3og-formation-history-future-placement")
+    if postclosure_ids and not set(postclosure_ids).issubset(future):
+        raise ValueError("p3og-formation-history-postclosure-placement")
     table = {event.event_id: event for event in captured}
     future_seals = {item for item in (criterion_id, result_id) if item is not None}
     for event_id in (*past, terminal_id):
@@ -845,6 +970,7 @@ def validate_p3og_formation_history_evidence(
     criterion_payload_digest: str | None,
     later_result_payload_digest: str | None,
     evidence: P3OGFormationHistoryEvidence,
+    postclosure_bindings: FormationHistoryPostClosureBindings | None = None,
 ) -> P3OGFormationHistoryEvidence:
     """Freshly rebuild the one-shot DAG and any post-closure future seals."""
     if type(evidence) is not P3OGFormationHistoryEvidence:
@@ -859,6 +985,7 @@ def validate_p3og_formation_history_evidence(
             formation_evidence,
             criterion_payload_digest,
             later_result_payload_digest,
+            postclosure_bindings,
         )
         equal = compare_digest(evidence_bytes(evidence), evidence_bytes(expected))
     except (AttributeError, RecursionError, TypeError, UnicodeError, ValueError) as exc:

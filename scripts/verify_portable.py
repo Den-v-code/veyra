@@ -69,6 +69,7 @@ PORTABLE_TESTS = (
     "tests/test_prime_power_observer_genesis_p3og_semantic_retained_difference.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_residue_phase_effect.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_matched_ablation_removal.py",
+    "tests/test_prime_power_observer_genesis_p3og_semantic_complete_history.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_configuration.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_ablation.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_formation_bridge.py",
