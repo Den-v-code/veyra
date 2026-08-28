@@ -10,6 +10,7 @@ class FormationHistoryEventKind(str, Enum):
     SOURCE_COMMIT = "source-commit"
     AUTONOMOUS_LAW_COMMIT = "autonomous-law-commit"
     FORMATION_CONTRACT_COMMIT = "formation-contract-commit"
+    PRESELECTION_COMMITMENT = "preselection-commitment"
     SELECTION_POOL_COMMIT = "selection-pool-commit"
     BLIND_SEED_COMMIT = "blind-seed-commit"
     SELECTOR_LAW_COMMIT = "selector-law-commit"
@@ -35,6 +36,16 @@ class FormationHistoryStatus(str, Enum):
 
 
 @dataclass(frozen=True)
+class FormationHistoryPrecommitment:
+    """One generic outcome-free commitment inserted before candidate selection."""
+
+    commitment_id: str
+    payload_digest: str
+    direct_source_event_ids: tuple[str, ...]
+    commitment_digest: str
+
+
+@dataclass(frozen=True)
 class P3OGFormationHistoryPlan:
     """Outcome-free plan fixed through the exact AVAILABLE selection cut."""
 
@@ -47,12 +58,15 @@ class P3OGFormationHistoryPlan:
     blind_seed_digest: str
     selection_source_closure_digest: str
     available_capability_digest: str
+    preselection_commitments: tuple[FormationHistoryPrecommitment, ...]
+    preselection_commitments_digest: str
     lineage_id: str
     scope_digest: str
     graph_rule_id: str
     max_events: int
     max_parents_per_event: int
     max_sources_per_event: int
+    max_preselection_commitments: int
     plan_digest: str
 
 
@@ -115,6 +129,7 @@ P3OG_FORMATION_HISTORY_NONCLAIMS = (
     "full-def-og-009-discharge",
     "externally-authenticated-event-source-dependency-completeness",
     "undeclared-or-out-of-band-event-source-dependencies",
+    "generic-preselection-commitment-payload-truth",
     "semantic-nonderivability-of-future-seals",
     "declared-doctrine-or-external-semantic-scope",
     "primitive-rez-nod-tact-breath-genealogy",

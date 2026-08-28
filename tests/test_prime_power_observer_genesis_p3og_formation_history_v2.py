@@ -15,6 +15,7 @@ from src.core.prime_power_observer_genesis_p3og_autonomous_tick import (
 from src.core.prime_power_observer_genesis_p3og_formation_history import (
     build_p3og_formation_history_evidence,
     p3og_formation_history_plan,
+    p3og_formation_history_precommitment,
     validate_p3og_formation_history_evidence,
 )
 from src.core.prime_power_observer_genesis_p3og_formation_history_codec import (
@@ -23,6 +24,7 @@ from src.core.prime_power_observer_genesis_p3og_formation_history_codec import (
 from src.core.prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
     FormationHistoryEventSourceClosure,
+    FormationHistoryPrecommitment,
     FormationHistoryStatus,
 )
 from src.core.prime_power_observer_genesis_p3og_native_formation import (
@@ -37,7 +39,11 @@ from src.core.prime_power_observer_genesis_p3og_one_shot_selection import (
 from src.core.prime_power_observer_genesis_p3og_types import MaintenanceControlState
 
 
-def _fixture(*, low: TransitionKind = TransitionKind.MAINTAIN):
+def _fixture(
+    *,
+    low: TransitionKind = TransitionKind.MAINTAIN,
+    precommitments: tuple[FormationHistoryPrecommitment, ...] = (),
+):
     source = p3og_source(
         prime=3,
         depth=1,
@@ -91,6 +97,7 @@ def _fixture(*, low: TransitionKind = TransitionKind.MAINTAIN):
         autonomous,
         selection_source,
         available,
+        precommitments,
     )
     return source, autonomous, formation_source, formation, plan
 
@@ -132,6 +139,7 @@ def test_formation_contract_is_committed_before_selection() -> None:
     assert plan.max_events == 256
     assert plan.max_parents_per_event == 8
     assert plan.max_sources_per_event == 8
+    assert plan.max_preselection_commitments == 4
     plan_fields = {field.name for field in fields(plan)}
     assert "selected_seed_digest" not in plan_fields
     assert "selection_receipt_digest" not in plan_fields
@@ -149,6 +157,67 @@ def test_formation_contract_is_committed_before_selection() -> None:
     assert "n0-or-hap-lift" in evidence.nonclaims
     assert "historical-actualization" in evidence.nonclaims
     assert "externally-authenticated-event-source-dependency-completeness" in evidence.nonclaims
+
+
+def test_generic_preselection_commitments_are_strict_past_but_not_selection_sources() -> None:
+    semantic_contract = p3og_formation_history_precommitment(
+        "semantic-configuration-contract",
+        "c" * 64,
+        ("source", "autonomous-law"),
+    )
+    intervention_plan = p3og_formation_history_precommitment(
+        "semantic-intervention-plan",
+        "d" * 64,
+        ("semantic-configuration-contract",),
+    )
+    source, autonomous, formation_source, formation, plan = _fixture(
+        precommitments=(semantic_contract, intervention_plan),
+    )
+    evidence = build_p3og_formation_history_evidence(
+        source,
+        autonomous,
+        plan,
+        formation_source,
+        formation,
+        "a" * 64,
+        "b" * 64,
+    )
+    ids = tuple(event.event_id for event in evidence.events)
+    assert ids.index("formation-contract") < ids.index(
+        "semantic-configuration-contract"
+    )
+    assert ids.index("semantic-configuration-contract") < ids.index(
+        "semantic-intervention-plan"
+    )
+    assert ids.index("semantic-intervention-plan") < ids.index("selection-pool")
+    assert ids.index("semantic-intervention-plan") < ids.index("selection-consume")
+    assert "semantic-configuration-contract" in evidence.strict_past_event_ids
+    assert "semantic-intervention-plan" in evidence.strict_past_event_ids
+
+    table = {event.event_id: event for event in evidence.events}
+    history_plan = table["history-plan"]
+    assert "semantic-configuration-contract" in (
+        history_plan.source_closure.transitive_source_event_ids
+    )
+    assert "semantic-intervention-plan" in (
+        history_plan.source_closure.transitive_source_event_ids
+    )
+    consume_sources = table[
+        "selection-consume"
+    ].source_closure.transitive_source_event_ids
+    assert "semantic-configuration-contract" not in consume_sources
+    assert "semantic-intervention-plan" not in consume_sources
+    assert len(evidence.events) == len(formation.ticks) + 18
+
+
+def test_preselection_commitment_cannot_depend_on_future_or_unknown_event() -> None:
+    bad = p3og_formation_history_precommitment(
+        "semantic-intervention-plan",
+        "d" * 64,
+        ("selection-consume",),
+    )
+    with pytest.raises(ValueError, match="precommitment-future-source"):
+        _fixture(precommitments=(bad,))
 
 
 def test_event_source_closure_is_graph_derived_and_distinct_from_causal_parentage() -> None:

@@ -21,6 +21,7 @@ from .prime_power_observer_genesis_p3og_formation_history_types import (
     FormationHistoryEvent,
     FormationHistoryEventKind,
     FormationHistoryEventSourceClosure,
+    FormationHistoryPrecommitment,
     FormationHistoryStatus,
     P3OGFormationHistoryEvidence,
     P3OGFormationHistoryPlan,
@@ -55,14 +56,35 @@ from .prime_power_observer_genesis_p3og_selection_source_closure import (
 )
 from .prime_power_observer_genesis_p3og_types import P3OGSource
 
-PLAN_VERSION = "p3og-formation-history-plan-v5"
-EVIDENCE_VERSION = "p3og-formation-history-evidence-v5"
+PLAN_VERSION = "p3og-formation-history-plan-v6"
+EVIDENCE_VERSION = "p3og-formation-history-evidence-v6"
 GRAPH_RULE_ID = (
-    "event-source-closure-available-consume-terminal-formation-closure-future-seal-v5"
+    "preselection-commitments-event-source-closure-available-consume-terminal-v6"
 )
 MAX_EVENTS = 256
 MAX_PARENTS_PER_EVENT = 8
 MAX_SOURCES_PER_EVENT = 8
+MAX_PRESELECTION_COMMITMENTS = 4
+
+_RESERVED_PRECOMMITMENT_EVENT_IDS = frozenset({
+    "source",
+    "autonomous-law",
+    "formation-contract",
+    "selection-pool",
+    "blind-seed",
+    "selector-law",
+    "selection-source-closure",
+    "selection-source",
+    "selection-capability-available",
+    "history-plan",
+    "selection-consume",
+    "selection-capability-consumed",
+    "formation-source",
+    "first-closure",
+    "formation-refutation",
+    "decisive-criterion",
+    "later-result",
+})
 
 
 def _hex_digest(value: object, reason: str) -> str:
@@ -183,11 +205,77 @@ def _preflight_history_evidence(evidence: P3OGFormationHistoryEvidence) -> None:
     _validate_event_source_closures(events, plan_digest)
 
 
+def p3og_formation_history_precommitment(
+    commitment_id: str,
+    payload_digest: str,
+    direct_source_event_ids: tuple[str, ...],
+) -> FormationHistoryPrecommitment:
+    """Build one bounded generic commitment for the preselection history cut."""
+    if (
+        type(commitment_id) is not str
+        or not commitment_id
+        or len(commitment_id) > 128
+        or commitment_id in _RESERVED_PRECOMMITMENT_EVENT_IDS
+        or commitment_id.startswith("formation-tick-")
+    ):
+        raise ValueError("p3og-formation-history-precommitment-id")
+    payload_digest = _hex_digest(
+        payload_digest,
+        "p3og-formation-history-precommitment-payload",
+    )
+    if (
+        type(direct_source_event_ids) is not tuple
+        or len(direct_source_event_ids) > MAX_SOURCES_PER_EVENT
+        or len(direct_source_event_ids) != len(set(direct_source_event_ids))
+        or any(
+            type(item) is not str or not item
+            for item in direct_source_event_ids
+        )
+        or commitment_id in direct_source_event_ids
+    ):
+        raise ValueError("p3og-formation-history-precommitment-sources")
+    fields = (commitment_id, payload_digest, direct_source_event_ids)
+    return FormationHistoryPrecommitment(
+        *fields,
+        formation_history_digest("formation-history-precommitment", *fields),
+    )
+
+
+def _validated_preselection_commitments(
+    commitments: tuple[FormationHistoryPrecommitment, ...],
+) -> tuple[FormationHistoryPrecommitment, ...]:
+    if (
+        type(commitments) is not tuple
+        or len(commitments) > MAX_PRESELECTION_COMMITMENTS
+        or any(type(item) is not FormationHistoryPrecommitment for item in commitments)
+    ):
+        raise ValueError("p3og-formation-history-precommitments-shape")
+    ids = tuple(item.commitment_id for item in commitments)
+    if len(ids) != len(set(ids)):
+        raise ValueError("p3og-formation-history-precommitments-duplicate")
+    available_sources = {"source", "autonomous-law", "formation-contract"}
+    canonical: list[FormationHistoryPrecommitment] = []
+    for item in commitments:
+        if any(name not in available_sources for name in item.direct_source_event_ids):
+            raise ValueError("p3og-formation-history-precommitment-future-source")
+        expected = p3og_formation_history_precommitment(
+            item.commitment_id,
+            item.payload_digest,
+            item.direct_source_event_ids,
+        )
+        if not compare_digest(canonical_bytes(item), canonical_bytes(expected)):
+            raise ValueError("p3og-formation-history-precommitment-drift")
+        canonical.append(expected)
+        available_sources.add(expected.commitment_id)
+    return tuple(canonical)
+
+
 def p3og_formation_history_plan(
     source: P3OGSource,
     autonomous_source: P3OGAutonomousTickSource,
     selection_source: P3OGOneShotSelectionSource,
     available_capability: P3OGSelectionCapability,
+    preselection_commitments: tuple[FormationHistoryPrecommitment, ...] = (),
 ) -> P3OGFormationHistoryPlan:
     """Commit the blind source and AVAILABLE cut before selection or verdict."""
     source, autonomous_source = validate_autonomous_tick_source(
@@ -201,6 +289,13 @@ def p3og_formation_history_plan(
     )
     if available_capability.state is not SelectionCapabilityState.AVAILABLE:
         raise ValueError("p3og-formation-history-plan-capability-consumed")
+    preselection_commitments = _validated_preselection_commitments(
+        preselection_commitments,
+    )
+    preselection_commitments_digest = formation_history_digest(
+        "formation-history-preselection-commitments",
+        preselection_commitments,
+    )
     formation_contract_digest = _formation_contract_digest(autonomous_source)
     lineage_id = formation_history_digest(
         "formation-lineage",
@@ -209,6 +304,7 @@ def p3og_formation_history_plan(
         formation_contract_digest,
         selection_source.source_digest,
         available_capability.capability_digest,
+        preselection_commitments_digest,
         GRAPH_RULE_ID,
     )
     scope_digest = formation_history_digest(
@@ -218,6 +314,7 @@ def p3og_formation_history_plan(
         formation_contract_digest,
         selection_source.source_digest,
         available_capability.capability_digest,
+        preselection_commitments_digest,
         GRAPH_RULE_ID,
     )
     fields = (
@@ -230,12 +327,15 @@ def p3og_formation_history_plan(
         selection_source.blind_seed_digest,
         selection_source.source_closure.closure_digest,
         available_capability.capability_digest,
+        preselection_commitments,
+        preselection_commitments_digest,
         lineage_id,
         scope_digest,
         GRAPH_RULE_ID,
         MAX_EVENTS,
         MAX_PARENTS_PER_EVENT,
         MAX_SOURCES_PER_EVENT,
+        MAX_PRESELECTION_COMMITMENTS,
     )
     return P3OGFormationHistoryPlan(
         *fields,
@@ -262,6 +362,7 @@ def validate_formation_history_plan(
             autonomous_source,
             selection_source,
             available_capability,
+            plan.preselection_commitments,
         )
         equal = compare_digest(canonical_bytes(plan), canonical_bytes(expected))
     except (AttributeError, RecursionError, TypeError, UnicodeError, ValueError) as exc:
@@ -458,7 +559,11 @@ def build_p3og_formation_history_evidence(
         raise ValueError("p3og-formation-history-refuted-future-seal")
     if len(formation_evidence.ticks) > formation_source.max_formation_ticks:
         raise ValueError("p3og-formation-history-tick-limit")
-    required_events = len(formation_evidence.ticks) + (16 if witnessed else 14)
+    required_events = (
+        len(formation_evidence.ticks)
+        + len(plan.preselection_commitments)
+        + (16 if witnessed else 14)
+    )
     if required_events > plan.max_events:
         raise ValueError("p3og-formation-history-event-limit")
 
@@ -519,10 +624,22 @@ def build_p3og_formation_history_evidence(
         (autonomous_id,),
         plan.formation_contract_digest,
     )
+    precommitment_ids: list[str] = []
+    preselection_parent = formation_contract_id
+    for commitment in plan.preselection_commitments:
+        commitment_id = add(
+            commitment.commitment_id,
+            FormationHistoryEventKind.PRESELECTION_COMMITMENT,
+            (preselection_parent,),
+            commitment.direct_source_event_ids,
+            commitment.payload_digest,
+        )
+        precommitment_ids.append(commitment_id)
+        preselection_parent = commitment_id
     pool_id = add(
         "selection-pool",
         FormationHistoryEventKind.SELECTION_POOL_COMMIT,
-        (formation_contract_id,),
+        (preselection_parent,),
         (source_id,),
         formation_source.selection_source.pool_digest,
     )
@@ -565,7 +682,12 @@ def build_p3og_formation_history_evidence(
         "history-plan",
         FormationHistoryEventKind.HISTORY_PLAN_COMMIT,
         (available_id,),
-        (formation_contract_id, selection_source_id, available_id),
+        (
+            formation_contract_id,
+            selection_source_id,
+            available_id,
+            *precommitment_ids,
+        ),
         plan.plan_digest,
     )
     selection_id = add(
@@ -656,6 +778,7 @@ def build_p3og_formation_history_evidence(
         consumed_id,
         formation_source_id,
     }
+    required_past.update(precommitment_ids)
     required_past.update(
         f"formation-tick-{i}"
         for i in range(1, len(formation_evidence.ticks) + 1)
