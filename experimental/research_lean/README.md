@@ -50,11 +50,11 @@ The rebased candidate manifest binds the current 53-source stable inventory
 and nine research sources at base root
 `4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b`,
 research root
-`b2c86a8611a5da48097dd3a3938e80ab3f137b3e844e6d639237f93adba4f3c3`,
+`caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597`,
 and proof root
-`c64e7c13fe8002e1fa72dd547de95895119544b5dbb7dd1ef4577488ee5b69eb`.
+`dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509`.
 The complete manifest SHA-256 is
-`5bd33988fbf109e9e11615dd62a1924f9ed4837e50ee5bde85dc6ac918605990`.
+`dd3d0343bd26c16a0177ebf58b8dec82753ce118c708aadb5ff96dbdcde1bba2`.
 
 The trusted computing base remains the selected Lean compiler/kernel and its
 reported primitive axioms, local Elan or hosted archive delivery, the Python
