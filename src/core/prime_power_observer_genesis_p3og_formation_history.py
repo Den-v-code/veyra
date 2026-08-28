@@ -625,7 +625,7 @@ def build_p3og_formation_history_evidence(
             "decisive-criterion",
             FormationHistoryEventKind.DECISIVE_CRITERION,
             (terminal_id,),
-            (terminal_id,),
+            (),
             criterion_payload_digest,
         )
         result_id = add(

@@ -173,6 +173,10 @@ def test_event_source_closure_is_graph_derived_and_distinct_from_causal_parentag
     assert "blind-seed" in consume.source_closure.transitive_source_event_ids
     assert "selection-pool" in consume.source_closure.transitive_source_event_ids
     assert "source" in consume.source_closure.transitive_source_event_ids
+    criterion = table["decisive-criterion"]
+    assert criterion.parent_ids == ("first-closure",)
+    assert criterion.source_closure.direct_source_event_ids == ()
+    assert criterion.source_closure.transitive_source_event_ids == ()
     for event in evidence.events:
         assert event.source_closure.plan_digest == plan.plan_digest
         assert event.source_closure.event_id == event.event_id
