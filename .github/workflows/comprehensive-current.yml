@@ -1,0 +1,86 @@
+name: comprehensive-current
+
+on:
+  push:
+    branches:
+      - verification/comprehensive-current-c6287a
+
+permissions:
+  contents: read
+
+concurrency:
+  group: comprehensive-current-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: Exact upstream main / full make verify
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      TARGET_SHA: c6287a513ac82092de61f23ac792d3c0e5177dd4
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 2
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.11.14"
+      - name: Checkout exact upstream tree
+        run: |
+          set -euo pipefail
+          git checkout --detach "$TARGET_SHA"
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          python --version
+          printf '[attest] target_sha=%s clean=yes\n' "$TARGET_SHA"
+      - name: Install exact Python verification tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+      - name: Install SageMath 10.7 from conda-forge
+        run: |
+          set -euo pipefail
+          test -x "$CONDA/bin/conda"
+          "$CONDA/bin/conda" create --yes --prefix "$RUNNER_TEMP/sage" \
+            --override-channels --channel conda-forge \
+            "python=3.11" "sage=10.7"
+          test -x "$RUNNER_TEMP/sage/bin/sage"
+          "$RUNNER_TEMP/sage/bin/sage" --version
+          printf 'SAGE=%s\n' "$RUNNER_TEMP/sage/bin/sage" >> "$GITHUB_ENV"
+      - name: Install pinned Rust toolchain
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+      - name: Install hash-pinned Lean archive
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean-4.30.0-rc2-linux.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+            --progress-bar --output "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" \
+            | sha256sum --check --strict
+          tar --zstd -xf "$archive" -C "$RUNNER_TEMP"
+          lean_root="$RUNNER_TEMP/lean-4.30.0-rc2-linux"
+          test -x "$lean_root/bin/lean"
+          printf '%s\n' "$lean_root/bin" >> "$GITHUB_PATH"
+          "$lean_root/bin/lean" --version
+      - name: Full comprehensive verification
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          make verify PYTHON=python SAGE="$SAGE" LEAN_JOBS=8
+      - name: Final source continuity attestation
+        if: always()
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] target_sha=%s clean=yes postcheck=yes\n' "$TARGET_SHA"
