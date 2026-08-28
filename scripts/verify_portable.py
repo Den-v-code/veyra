@@ -66,6 +66,7 @@ PORTABLE_TESTS = (
     "tests/test_prime_power_observer_genesis_p3og_one_shot_selection.py",
     "tests/test_prime_power_observer_genesis_p3og_selection_source_closure.py",
     "tests/test_prime_power_observer_genesis_p3og_arithmetic_input.py",
+    "tests/test_prime_power_observer_genesis_p3og_semantic_retained_difference.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_configuration.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_ablation.py",
     "tests/test_prime_power_observer_genesis_p3og_semantic_formation_bridge.py",
