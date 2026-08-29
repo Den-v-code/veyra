@@ -560,9 +560,26 @@
         "RESEARCH_OT_L013_one_tact_zero_native",
         "RESEARCH_OT_L014_one_tact_one_native"
       ]
+    },
+    {
+      "path": "experimental/research_lean/VeyraResearchP3OGBounded.lean",
+      "sha256": "d0c5056f6cc76a11d65dbd0ca45f5f957aa31b7bdd064034e564606c9e69cef0",
+      "imports": [
+        "VeyraPrimePowerReductionNetwork",
+        "Lean.Elab.Tactic.Omega"
+      ],
+      "declarations": [
+        "RESEARCH_P3OG_T001_f0_f1_arithmetic_distinct",
+        "RESEARCH_P3OG_T002_selection_is_consumed_one_shot",
+        "RESEARCH_P3OG_T003_first_closure_is_genuine",
+        "RESEARCH_P3OG_T004_retained_difference_changes_later_phase",
+        "RESEARCH_P3OG_T005_matched_ablation_removes_declared_ability",
+        "RESEARCH_P3OG_T006_history_edges_are_forward",
+        "RESEARCH_P3OG_T007_bounded_candidate_witness"
+      ]
     }
   ],
-  "declaration_count": 86,
+  "declaration_count": 93,
   "headline_declarations": [
     "RESEARCH_BS_T001_binomial_sum",
     "RESEARCH_BS_T002_freshman_dream",
@@ -603,7 +620,14 @@
     "RESEARCH_OT_T004_one_tact_rank_length_weave_mul",
     "RESEARCH_OT_T005_one_tact_word_intrinsic_bijection",
     "RESEARCH_OT_T006_native_stitch_realizes_one_tact_stitch",
-    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave"
+    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave",
+    "RESEARCH_P3OG_T001_f0_f1_arithmetic_distinct",
+    "RESEARCH_P3OG_T002_selection_is_consumed_one_shot",
+    "RESEARCH_P3OG_T003_first_closure_is_genuine",
+    "RESEARCH_P3OG_T004_retained_difference_changes_later_phase",
+    "RESEARCH_P3OG_T005_matched_ablation_removes_declared_ability",
+    "RESEARCH_P3OG_T006_history_edges_are_forward",
+    "RESEARCH_P3OG_T007_bounded_candidate_witness"
   ],
   "headline_claims": {
     "RESEARCH_BS_T001_binomial_sum": {
@@ -805,6 +829,41 @@
       "statement": "(left right : OneTactWord) : VeyraIntrinsicRuntime.weave (oneTactIntrinsicMode left).1 (oneTactIntrinsicMode right).1 = .ready (oneTactIntrinsicMode (oneTactLengthWeave left right)).1",
       "scope": "strict-native weave restricted to the exact R9 image of singleton words",
       "registry_relation": "native realization evidence only; stable THM-003 remains unchanged"
+    },
+    "RESEARCH_P3OG_T001_f0_f1_arithmetic_distinct": {
+      "statement": " {p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : researchP3OGArithmeticInput hp n .f0 ≠ researchP3OGArithmeticInput hp n .f1",
+      "scope": "exact P3-N2 F_0/F_1 integer-family coordinates at one finite depth only",
+      "registry_relation": "formal arithmetic provenance for the bounded P3-OG research candidate; no P3-N0/HAP or THM-P3OG promotion"
+    },
+    "RESEARCH_P3OG_T002_selection_is_consumed_one_shot": {
+      "statement": " : researchP3OGConsumeSelection .available = some (.alpha, .consumed) /\\ researchP3OGConsumeSelection .consumed = none",
+      "scope": "singleton predeclared candidate pool and explicit available-to-consumed capability only",
+      "registry_relation": "one-shot consumption witness only; full dependency-blind DEF-OG-002 remains outside this theorem"
+    },
+    "RESEARCH_P3OG_T003_first_closure_is_genuine": {
+      "statement": " : researchP3OGFormationTick .unformed = .closed /\\ researchP3OGIsClosed .unformed = false /\\ researchP3OGIsClosed (researchP3OGFormationTick .unformed) = true",
+      "scope": "explicit two-state unformed-to-closed formation model with no prior closed state",
+      "registry_relation": "bounded first-closure construction only; no Python genealogy equivalence or observer-role admission"
+    },
+    "RESEARCH_P3OG_T004_retained_difference_changes_later_phase": {
+      "statement": " : researchP3OGRetentionClaim",
+      "scope": "exact period-three semantic fixture, F_0/F_1 residues, and one common continuation tick",
+      "registry_relation": "formal retained-residue/later-phase witness for the bounded candidate; no universal causal-efficacy theorem"
+    },
+    "RESEARCH_P3OG_T005_matched_ablation_removes_declared_ability": {
+      "statement": " : researchP3OGAblationClaim",
+      "scope": "exact maintenance-only matched ablation in the same bounded semantic fixture",
+      "registry_relation": "bounded removal-dependence witness only; THM-P3OG-003 and general ablation separator remain OPEN"
+    },
+    "RESEARCH_P3OG_T006_history_edges_are_forward": {
+      "statement": " : researchP3OGHistoryClaim",
+      "scope": "explicit finite event-rank parent relation for the bounded candidate history",
+      "registry_relation": "acyclic forward-order evidence only; not full source-closure DEF-OG-009 or historical authentication"
+    },
+    "RESEARCH_P3OG_T007_bounded_candidate_witness": {
+      "statement": " {p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : ResearchP3OGBoundedWitness hp n",
+      "scope": "bundle of the six independently constructed bounded formal obligations above",
+      "registry_relation": "INTERNAL_RESEARCH_CANDIDATE bridge from executable semantics to Lean; no EndogenousArithmeticObserverRole or THM-P3OG-001 promotion"
     }
   },
   "axiom_closure": {
@@ -1040,11 +1099,30 @@
     "RESEARCH_OT_L013_one_tact_zero_native": [],
     "RESEARCH_OT_L014_one_tact_one_native": [
       "propext"
+    ],
+    "RESEARCH_P3OG_T001_f0_f1_arithmetic_distinct": [
+      "propext"
+    ],
+    "RESEARCH_P3OG_T002_selection_is_consumed_one_shot": [],
+    "RESEARCH_P3OG_T003_first_closure_is_genuine": [],
+    "RESEARCH_P3OG_T004_retained_difference_changes_later_phase": [
+      "propext"
+    ],
+    "RESEARCH_P3OG_T005_matched_ablation_removes_declared_ability": [
+      "propext"
+    ],
+    "RESEARCH_P3OG_T006_history_edges_are_forward": [
+      "propext",
+      "Quot.sound"
+    ],
+    "RESEARCH_P3OG_T007_bounded_candidate_witness": [
+      "propext",
+      "Quot.sound"
     ]
   },
   "source_roots": {
     "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
-    "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
+    "research": "f21992f3f11a681a0c41d8c0b9818eb4b7a413a5ad5dfd85c1ff02bfd6d1a179"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "a6c281d7b3e7eb8e282f0401dcf7a5fbbac057553c48e42bc06371f02798c65f"
 }

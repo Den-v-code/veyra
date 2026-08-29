@@ -208,7 +208,7 @@ or imported-module dependencies, and its source location. A dependency entry of
 
 ## Experimental research appendix
 
-The 86 declarations (40 headlines) in `experimental/research_lean/manifest.json`
+The 93 declarations (47 headlines) in `experimental/research_lean/manifest.json`
 are a separate `INTERNAL_RESEARCH_CANDIDATE` appendix, not stable theorem rows.
 Their exact digests, import graph, toolchain commit, and axiom closures are
 checked by `make research-lean`; THM-001–003 and all X8 statuses below are

@@ -48,3 +48,15 @@
   wording were unsuitable for the stable proof lane.
 - **Module version:** new → 0.1.0
 - **Status:** `INTERNAL_RESEARCH_CANDIDATE`; no stable theorem promotion.
+
+## 2026-08-29 — bounded P3-OG formal bridge candidate
+
+- Added `VeyraResearchP3OGBounded.lean` as the tenth INTERNAL_RESEARCH_CANDIDATE
+  source: seven headline theorems construct the exact bounded arithmetic,
+  one-shot, first-closure, retained-effect, matched-ablation and forward-history
+  witness without an observer-role or theorem promotion.
+- Exact hosted probe on Lean 4.30.0-rc2 established axiom closures:
+  T001/T004/T005 = `propext`; T002/T003 = empty; T006/T007 =
+  `propext, Quot.sound`; no `Classical.choice` and no `sorryAx`.
+- Manifest identity moves to 53 stable + 10 research sources, 93 declarations
+  and 47 headlines. Python runtime and stable theorem registry remain unchanged.

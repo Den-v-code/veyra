@@ -3,8 +3,8 @@
 Status: **`INTERNAL_RESEARCH_CANDIDATE`**. This directory is deliberately
 outside the 53-source stable Lean inventory and is not part of `make verify`.
 
-The canonical `manifest.json` binds nine research sources, their imports and
-SHA-256 digests, 86 declarations (40 headline declarations and 46 helpers), the
+The canonical `manifest.json` binds ten research sources, their imports and
+SHA-256 digests, 93 declarations (47 headline declarations and 46 helpers), the
 40 literal headline signatures and claim boundaries, and the exact axiom
 closure printed by Lean. Ordered domain-separated source and proof roots make
 the aggregate review identity explicit. The reviewed toolchain is
@@ -22,6 +22,7 @@ the aggregate review identity explicit. The reviewed toolchain is
 | `VeyraResearchPythagorean.lean` | 6 | classical integer identities |
 | `VeyraResearchShadow.lean` | 11 | unary `Recurrence` pulse/silence image only |
 | `VeyraResearchOneTactBridge.lean` | 21 | singleton-tact path-word / Nat / unary `Recurrence` / exact R9-image bridge |
+| `VeyraResearchP3OGBounded.lean` | 7 | bounded P3-OG arithmetic/formation/retention/ablation/history formal bridge |
 
 The source scanner rejects project-local `sorry`, `admit`, `axiom`,
 `postulate`, `constant`, `opaque`, `unsafe`, `extern`, `implemented_by`, and
@@ -31,30 +32,30 @@ The source scanner rejects project-local `sorry`, `admit`, `axiom`,
 
 The candidate lane also rejects command-level declaration metaprogramming
 (`run_tac`, custom syntax/elaborators/macros, and `Lean.addDecl`) so an unused
-injected axiom cannot sit outside the exact 86-row audit.
+injected axiom cannot sit outside the exact 93-row audit.
 
 Run `make research-lean` for a fresh isolated verification. The checker copies
-the exact 53 stable and nine research sources into a temporary tree, compiles
-a new `.olean` graph, generates all 86 `#check` and `#print axioms` commands,
+the exact 53 stable and ten research sources into a temporary tree, compiles
+a new `.olean` graph, generates all 93 `#check` and `#print axioms` commands,
 and rehashes the originals after execution. It has no persistent cache.
 
 ## Evidence and trust boundary
 
 `source_roots.base` and `source_roots.research` hash the ordered
 `path + NUL + SHA-256` rows under separate length-delimited domains.
-`proof_root` then binds those roots, the exact toolchain identity, all 40
-literal claim/scope/registry rows, and all 86 ordered axiom closures. The root
+`proof_root` then binds those roots, the exact toolchain identity, all 47
+literal claim/scope/registry rows, and all 93 ordered axiom closures. The root
 does not hash itself or claim binary reproducibility.
 
 The rebased candidate manifest binds the current 53-source stable inventory
-and nine research sources at base root
+and ten research sources at base root
 `4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b`,
 research root
-`caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597`,
+`f21992f3f11a681a0c41d8c0b9818eb4b7a413a5ad5dfd85c1ff02bfd6d1a179`,
 and proof root
-`dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509`.
+`a6c281d7b3e7eb8e282f0401dcf7a5fbbac057553c48e42bc06371f02798c65f`.
 The complete manifest SHA-256 is
-`dd3d0343bd26c16a0177ebf58b8dec82753ce118c708aadb5ff96dbdcde1bba2`.
+`01f7e9e7536e0133bbbe7b07a06c0a2725460b263f0880f2534bff03f8d61c5e`.
 
 The trusted computing base remains the selected Lean compiler/kernel and its
 reported primitive axioms, local Elan or hosted archive delivery, the Python
@@ -79,3 +80,8 @@ revision is deliberately not embedded in the same commit it names.
 - Integer Pythagorean identities do not promote the stable fixed natural card.
 - These declarations have no stable theorem IDs, certificates, package runtime
   surface, public validation, registry promotion, or mathlib equivalence claim.
+
+- The bounded P3-OG source constructs only the exact finite research model stated
+  in its source and imports P3-N2 arithmetic definitions. It does not prove
+  Python/Lean implementation equivalence, full DEF-OG-002/009/010,
+  `EndogenousArithmeticObserverRole`, THM-P3OG-001/003, HAP, or promotion.

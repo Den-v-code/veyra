@@ -67,15 +67,15 @@ def _minimal_manifest(record: checker.SourceRecord) -> checker.ResearchManifest:
 
 
 def test_canonical_manifest_binds_exact_inventory_and_toolchain() -> None:
-    """The checked candidate has one exact 53+9/86 identity."""
+    """The checked candidate has one exact 53+10/93 identity."""
     logger.debug("test_research_lean canonical manifest entry")
     manifest = checker.load_manifest()
     assert len(manifest.base) == 53
-    assert len(manifest.research) == 9
-    assert len(manifest.declarations) == 86
-    assert len(manifest.headlines) == 40
-    assert len(manifest.headline_claims) == 40
-    assert len(manifest.axiom_closure) == 86
+    assert len(manifest.research) == 10
+    assert len(manifest.declarations) == 93
+    assert len(manifest.headlines) == 47
+    assert len(manifest.headline_claims) == 47
+    assert len(manifest.axiom_closure) == 93
     assert manifest.version == "4.30.0-rc2"
     assert manifest.commit == "3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc"
     assert "RESEARCH_T008_cross_product_reassociation" in manifest.declarations
@@ -191,7 +191,7 @@ def test_manifest_rejects_base_research_stem_collision(tmp_path: Path) -> None:
 
 
 def test_manifest_rejects_reduced_headline_ledger(tmp_path: Path) -> None:
-    """The canonical 40-headline set cannot be reduced and self-reblessed."""
+    """The canonical 47-headline set cannot be reduced and self-reblessed."""
     logger.debug("test_research_lean reduced headline entry")
     raw = _raw_manifest()
     headlines = raw["headline_declarations"]
@@ -348,8 +348,8 @@ def test_generated_audit_covers_every_declaration_exactly() -> None:
     for name in manifest.declarations:
         assert source.count(f"#check Veyra.{name}\n") == 1
         assert source.count(f"#print axioms Veyra.{name}\n") == 1
-    assert source.count("#check Veyra.") == 86
-    assert source.count("#print axioms Veyra.") == 86
+    assert source.count("#check Veyra.") == 93
+    assert source.count("#print axioms Veyra.") == 93
     logger.debug("test_research_lean generated audit exit")
 
 
