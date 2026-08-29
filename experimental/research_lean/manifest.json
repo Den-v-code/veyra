@@ -563,7 +563,7 @@
     },
     {
       "path": "experimental/research_lean/VeyraResearchP3OGBounded.lean",
-      "sha256": "94a87df2576c8628bb5e4d10d562ede94c3241ef6e04d1bd382d3a6a9fc40cb7",
+      "sha256": "0a9b45d50d405121f4c09c2e8c72241c0e23dd3890ef7e5ec4da69acec7a846e",
       "imports": [
         "VeyraPrimePowerReductionNetwork",
         "Lean.Elab.Tactic.Omega"
@@ -575,11 +575,12 @@
         "RESEARCH_OG_T004_retained_difference_changes_later_phase",
         "RESEARCH_OG_T005_matched_ablation_removes_declared_ability",
         "RESEARCH_OG_T006_history_edges_are_forward",
-        "RESEARCH_OG_T007_bounded_candidate_witness"
+        "RESEARCH_OG_T007_bounded_candidate_witness",
+        "RESEARCH_OG_T008_current_executable_candidate"
       ]
     }
   ],
-  "declaration_count": 93,
+  "declaration_count": 94,
   "headline_declarations": [
     "RESEARCH_BS_T001_binomial_sum",
     "RESEARCH_BS_T002_freshman_dream",
@@ -627,7 +628,8 @@
     "RESEARCH_OG_T004_retained_difference_changes_later_phase",
     "RESEARCH_OG_T005_matched_ablation_removes_declared_ability",
     "RESEARCH_OG_T006_history_edges_are_forward",
-    "RESEARCH_OG_T007_bounded_candidate_witness"
+    "RESEARCH_OG_T007_bounded_candidate_witness",
+    "RESEARCH_OG_T008_current_executable_candidate"
   ],
   "headline_claims": {
     "RESEARCH_BS_T001_binomial_sum": {
@@ -864,6 +866,11 @@
       "statement": "{p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : ResearchP3OGBoundedWitness hp n",
       "scope": "bundled finite construction joining P3-N2 arithmetic, one-shot selection, first closure, retention, ablation/removal, and forward history",
       "registry_relation": "internal bounded P3-OG candidate only; no EndogenousArithmeticObserverRole, HAP/N0, THM-P3OG-001, or registry promotion"
+    },
+    "RESEARCH_OG_T008_current_executable_candidate": {
+      "statement": ": researchP3OGCurrentExecutableClaim /\\ ResearchP3OGBoundedWitness researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth",
+      "scope": "current executable fixture literal contract at prime 3/depth 1: maintenance credit, exact P3-N2 F_0/F_1 residues, later phases, matched ablation removal, and the bundled bounded witness",
+      "registry_relation": "bounded executable/formal continuity checkpoint only; no Python-byte implementation equivalence, full DEF-OG-009, observer-role/HAP/N0, THM-P3OG-001/003, certificate, or registry promotion"
     }
   },
   "axiom_closure": {
@@ -1118,11 +1125,15 @@
     "RESEARCH_OG_T007_bounded_candidate_witness": [
       "propext",
       "Quot.sound"
+    ],
+    "RESEARCH_OG_T008_current_executable_candidate": [
+      "propext",
+      "Quot.sound"
     ]
   },
   "source_roots": {
     "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
-    "research": "2bf70ad06cd7204e2ae4b6e32c6d474a32397b720f3fc68e172a97990cbf58d7"
+    "research": "4d70b766729073da7a4cdfa013d1ded7d682917c1a1109efb600fdc28fd1f601"
   },
-  "proof_root": "db8cff1bc2f73d05394b9fea114f2f46aa0aa2547fbbd51993a5d6aed5eee751"
+  "proof_root": "79ae618e2f890bfa08e20f7ca6a941f1ecf4490e821dc0a4ce16d18717578956"
 }

@@ -4,8 +4,8 @@ Status: **`INTERNAL_RESEARCH_CANDIDATE`**. This directory is deliberately
 outside the 53-source stable Lean inventory and is not part of `make verify`.
 
 The canonical `manifest.json` binds ten research sources, their imports and
-SHA-256 digests, 93 declarations (47 headline declarations and 46 helpers), the
-47 literal headline signatures and claim boundaries, and the exact axiom
+SHA-256 digests, 94 declarations (48 headline declarations and 46 helpers), the
+48 literal headline signatures and claim boundaries, and the exact axiom
 closure printed by Lean. Ordered domain-separated source and proof roots make
 the aggregate review identity explicit. The reviewed toolchain is
 `leanprover/lean4:v4.30.0-rc2`, Lean `4.30.0-rc2`, commit
@@ -22,40 +22,40 @@ the aggregate review identity explicit. The reviewed toolchain is
 | `VeyraResearchPythagorean.lean` | 6 | classical integer identities |
 | `VeyraResearchShadow.lean` | 11 | unary `Recurrence` pulse/silence image only |
 | `VeyraResearchOneTactBridge.lean` | 21 | singleton-tact path-word / Nat / unary `Recurrence` / exact R9-image bridge |
-| `VeyraResearchP3OGBounded.lean` | 7 | bounded P3-OG formal counterpart joining P3-N2 arithmetic to finite selection/closure/retention/ablation/history |
+| `VeyraResearchP3OGBounded.lean` | 8 | bounded P3-OG formal counterpart plus one current-executable literal checkpoint joining P3-N2 arithmetic to finite selection/closure/retention/ablation/history |
 
 The source scanner rejects project-local `sorry`, `admit`, `axiom`,
 `postulate`, `constant`, `opaque`, `unsafe`, `extern`, `implemented_by`, and
 `sorryAx` code tokens. That is not an “axiom-free” claim: the frozen report has
-28 empty closure rows and 65 rows depending on subsets of `propext`,
+28 empty closure rows and 66 rows depending on subsets of `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 The candidate lane also rejects command-level declaration metaprogramming
 (`run_tac`, custom syntax/elaborators/macros, and `Lean.addDecl`) so an unused
-injected axiom cannot sit outside the exact 93-row audit.
+injected axiom cannot sit outside the exact 94-row audit.
 
 Run `make research-lean` for a fresh isolated verification. The checker copies
 the exact 53 stable and ten research sources into a temporary tree, compiles
-a new `.olean` graph, generates all 93 `#check` and `#print axioms` commands,
+a new `.olean` graph, generates all 94 `#check` and `#print axioms` commands,
 and rehashes the originals after execution. It has no persistent cache.
 
 ## Evidence and trust boundary
 
 `source_roots.base` and `source_roots.research` hash the ordered
 `path + NUL + SHA-256` rows under separate length-delimited domains.
-`proof_root` then binds those roots, the exact toolchain identity, all 47
-literal claim/scope/registry rows, and all 93 ordered axiom closures. The root
+`proof_root` then binds those roots, the exact toolchain identity, all 48
+literal claim/scope/registry rows, and all 94 ordered axiom closures. The root
 does not hash itself or claim binary reproducibility.
 
 The rebased candidate manifest binds the current 53-source stable inventory
 and ten research sources at base root
 `4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b`,
 research root
-`2bf70ad06cd7204e2ae4b6e32c6d474a32397b720f3fc68e172a97990cbf58d7`,
+`4d70b766729073da7a4cdfa013d1ded7d682917c1a1109efb600fdc28fd1f601`,
 and proof root
-`db8cff1bc2f73d05394b9fea114f2f46aa0aa2547fbbd51993a5d6aed5eee751`.
+`79ae618e2f890bfa08e20f7ca6a941f1ecf4490e821dc0a4ce16d18717578956`.
 The complete manifest SHA-256 is
-`35ac185bcd7f9bb44267a70e39a31db85d7cac10b6f9cab82a80e7bc8820da90`.
+`79cd2772c6a908179ea0ee14b36d21eca7995b7983eafe591f61943454b3b739`.
 
 The trusted computing base remains the selected Lean compiler/kernel and its
 reported primitive axioms, local Elan or hosted archive delivery, the Python
@@ -74,7 +74,7 @@ revision is deliberately not embedded in the same commit it names.
   realization. It does not prove that AX-007 excludes additional tacts, does not
   establish general LEM-001, does not identify arbitrary strict modes with `Nat`,
   and does not promote THM-001–003 or W-001.
-- The bounded P3-OG file is a constructive finite formal counterpart only. It does not prove Python/Lean implementation equivalence, full DEF-OG-009, same-token causal efficacy, `EndogenousArithmeticObserverRole`, HAP/N0, or THM-P3OG-001/003 promotion.
+- The bounded P3-OG file is a constructive finite formal counterpart. `RESEARCH_OG_T008_current_executable_candidate` additionally binds the current executable fixture literals (`p=3`, depth `1`, credit `1`, F0/F1 residues `0/1`, later phases `1/2`) to the already proved bounded retention/ablation witness; the Python complete-history hostile test independently checks those literals against a fresh executable replay. This is a bounded continuity checkpoint, not Python-byte implementation equivalence, full DEF-OG-009, same-token causal efficacy, `EndogenousArithmeticObserverRole`, HAP/N0, or THM-P3OG-001/003 promotion.
 - Prime, gcd, and Fermat declarations are classical local `Nat` results, not a
   Veyra resonance-prime theory, native repair, or factorization foundation.
 - Counting identities are not event-theoretic or general probability results.

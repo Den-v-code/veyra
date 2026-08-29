@@ -1,5 +1,21 @@
 # Research Lean module log
 
+### [0.4.0] Current executable P3-OG checkpoint
+- **Type:** Research / executable-formal continuity
+- **Files:** `VeyraResearchP3OGBounded.lean`, manifest/checker inventory, existing
+  complete-history hostile test, Research Lean evidence references
+- **What:** Added one concrete T008 over the existing bounded model. The theorem
+  fixes the current executable fixture literals at `p=3`, depth `1`, credit `1`,
+  residues `0/1`, and later phases `1/2`, and derives retention/ablation/bundled
+  evidence through T004/T005/T007. The Python history test separately rebuilds
+  the executable witness and rejects literal drift.
+- **Evidence:** exact Lean `4.30.0-rc2`; 63/63 sources, 94/94 declarations and
+  axiom rows; T008 closure `propext, Quot.sound`; no `sorryAx`.
+- **Module version:** 0.3.0 → 0.4.0
+- **Boundary:** bounded continuity checkpoint only; no Python-byte equivalence,
+  full DEF-OG-009, same-token causal efficacy, observer-role/HAP/N0,
+  THM-P3OG-001/003, certificate, or registry promotion.
+
 ### [0.3.0] Bounded P3-OG formal counterpart
 - **Type:** Research / formal bridge
 - **Files:** `VeyraResearchP3OGBounded.lean`, `manifest.json`, README/module memory,

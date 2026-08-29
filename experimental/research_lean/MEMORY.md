@@ -1,9 +1,9 @@
 # Research Lean module memory
 
-Version: **0.3.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
+Version: **0.4.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
 
 - `manifest.json` is canonical: exactly 53 stable dependencies, ten research
-  sources, 93 declarations, 47 literal headline claim rows, 93 axiom-closure
+  sources, 94 declarations, 48 literal headline claim rows, 94 axiom-closure
   rows, and domain-separated aggregate roots.
 - `scripts/check_research_lean.py` always uses a fresh temporary snapshot and
   `.olean` tree, exact toolchain version/commit, bounded work, token-aware
@@ -16,8 +16,26 @@ Version: **0.3.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
 - One-tact bridge scope is the explicit singleton-generated path-word realization
   and its exact R9 image only; it is not an AX-007 exhaustion theorem.
 - Bounded P3-OG scope is one constructive finite formal counterpart using exact
-  P3-N2 F_0/F_1 coordinates. It is not Python/Lean equivalence, full DEF-OG-009,
-  same-token causal efficacy, observer-role admission, HAP/N0, or theorem promotion.
+  P3-N2 F_0/F_1 coordinates. T008 additionally fixes the current executable
+  fixture literals and is cross-checked by a fresh Python complete-history
+  replay. It is not Python-byte equivalence, full DEF-OG-009, same-token causal
+  efficacy, observer-role admission, HAP/N0, or theorem promotion.
+
+## Session Notes (2026-08-29) — executable/formal continuity
+
+- Added `RESEARCH_OG_T008_current_executable_candidate` without a new research
+  source or bridge framework. It fixes the current executable fixture at
+  prime 3/depth 1, maintenance credit 1, P3-N2 residues 0/1, and later phases
+  1/2, while reusing T004/T005/T007 for the proved retention/ablation/bundled
+  witness.
+- The existing complete-history hostile test independently rebuilds the Python
+  candidate and requires those same Lean literals plus removed/cleared ablation
+  outcomes. Exact Research Lean replay is now 63 sources / 94 declarations /
+  94 axiom rows; T008 stays within `propext` + `Quot.sound` and introduces no
+  `sorryAx`.
+- This raises evidence to a bounded executable/formal continuity checkpoint but
+  does not establish Python-byte implementation equivalence or any role/HAP/N0
+  or theorem promotion.
 
 ## Session Notes (2026-08-29)
 

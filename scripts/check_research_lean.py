@@ -31,8 +31,8 @@ EXPECTED_SCHEMA = "veyra.research-lean-manifest.v1"
 EXPECTED_STATUS = "INTERNAL_RESEARCH_CANDIDATE"
 EXPECTED_BASE_COUNT = 53
 EXPECTED_RESEARCH_COUNT = 10
-EXPECTED_DECLARATION_COUNT = 93
-EXPECTED_HEADLINE_COUNT = 47
+EXPECTED_DECLARATION_COUNT = 94
+EXPECTED_HEADLINE_COUNT = 48
 MAX_JOBS = 16
 MAX_SOURCE_BYTES = 1_000_000
 MAX_MANIFEST_BYTES = 512_000
@@ -920,7 +920,7 @@ def run(argv: list[str]) -> int:
             )
             logger.debug("research_lean.run exit rc=1 compile failure")
             return 1
-        print("[5/6] Checking all 93 declarations and exact axiom closure", flush=True)
+        print("[5/6] Checking all 94 declarations and exact axiom closure", flush=True)
         observed_closure = compile_audit(
             command,
             manifest,
@@ -950,8 +950,8 @@ def run(argv: list[str]) -> int:
         flush=True,
     )
     print(
-        f"[done] passed={passed} failed=0 skipped=0 declarations=93 "
-        f"axiom_rows=93 elapsed={elapsed:.2f}s "
+        f"[done] passed={passed} failed=0 skipped=0 declarations=94 "
+        f"axiom_rows=94 elapsed={elapsed:.2f}s "
         f"speed={passed / elapsed if elapsed else 0:.2f} source/s",
         flush=True,
     )

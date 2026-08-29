@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -62,6 +63,7 @@ from src.core.prime_power_observer_genesis_p3og_semantic_retained_difference imp
     build_p3og_semantic_retained_difference_evidence,
 )
 from src.core.prime_power_observer_genesis_p3og_types import (
+    BoundaryState,
     MaintenanceControlState,
 )
 
@@ -293,6 +295,52 @@ def test_coherent_candidate_is_one_forward_noncircular_history_v6() -> None:
     assert "full-def-og-009-discharge" in evidence.nonclaims
     assert "typed-post-formation-ablation" in evidence.nonclaims
     assert "same-token-causal-efficacy" in evidence.nonclaims
+
+
+def test_current_executable_contract_matches_manifest_bound_lean_candidate() -> None:
+    fixture = _fixture()
+    evidence = _build(fixture)
+    source = fixture[0]
+    arithmetic = fixture[6]
+    retained = fixture[11]
+    phase = fixture[12]
+    removal = fixture[13]
+    lean = Path(
+        "experimental/research_lean/VeyraResearchP3OGBounded.lean"
+    ).read_text(encoding="utf-8")
+
+    assert evidence.status is FormationHistoryStatus.WITNESSED
+    assert retained.left_coupled.retained_residue == arithmetic.left_residue
+    assert retained.right_coupled.retained_residue == arithmetic.right_residue
+    assert removal.left_ablated_configurations[-1].boundary is BoundaryState.REMOVED
+    assert removal.right_ablated_configurations[-1].boundary is BoundaryState.REMOVED
+    assert removal.left_ablated_configurations[-1].retained_residue is None
+    assert removal.right_ablated_configurations[-1].retained_residue is None
+
+    expected_scalars = (
+        ("researchP3OGCurrentExecutablePrime", source.prime),
+        ("researchP3OGCurrentExecutableDepth", source.depth),
+        ("researchP3OGCurrentExecutableMaintenanceCredit", source.maintenance_credit),
+        ("researchP3OGCurrentExecutableLeftResidue", arithmetic.left_residue),
+        ("researchP3OGCurrentExecutableRightResidue", arithmetic.right_residue),
+        ("researchP3OGCurrentExecutableLeftAfterPhase", phase.left_after_phase),
+        ("researchP3OGCurrentExecutableRightAfterPhase", phase.right_after_phase),
+    )
+    assert (
+        'def researchP3OGCurrentExecutableFixtureId : String :=\n'
+        f'  "{source.source_instance_label}"'
+    ) in lean
+    for name, value in expected_scalars:
+        assert f"def {name} : Nat := {value}" in lean
+
+    claim = lean.split(
+        "def researchP3OGCurrentExecutableClaim : Prop :=", 1
+    )[1].split(
+        "theorem RESEARCH_OG_T008_current_executable_candidate", 1
+    )[0]
+    assert "researchP3OGRetentionClaim" in claim
+    assert "researchP3OGAblationClaim" in claim
+    assert "RESEARCH_OG_T008_current_executable_candidate" in lean
 
 
 def test_specialized_complete_history_fresh_validation_rebuilds_exact_dag() -> None:

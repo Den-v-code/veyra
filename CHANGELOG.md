@@ -2,13 +2,15 @@
 
 ## [Unreleased] — Changed
 - Added a tenth manifest-bound Research Lean source for a bounded P3-OG formal
-  counterpart. The governed surface is now 53 stable + 10 research sources / 93
-  declarations / 47 headline claims / 93 exact axiom rows. The seven new
-  declarations import the existing P3-N2 reduction network, construct bounded
-  one-shot selection/first closure/retention/later-phase/ablation/history
-  evidence, and remain `INTERNAL_RESEARCH_CANDIDATE`; they do not claim
-  Python/Lean implementation equivalence, full DEF-OG-009, observer-role/HAP/N0,
-  THM-P3OG-001/003, certificate, or registry promotion.
+  counterpart and then one current-executable continuity checkpoint in that same
+  source. The governed surface is now 53 stable + 10 research sources / 94
+  declarations / 48 headline claims / 94 exact axiom rows. T001-T007 construct
+  bounded one-shot selection/first closure/P3-N2 retention/later-phase/ablation/
+  history evidence; T008 fixes the current `p=3`, depth-1 executable literals and
+  is independently cross-checked by fresh Python complete-history replay. All
+  remain `INTERNAL_RESEARCH_CANDIDATE`; no Python-byte implementation equivalence,
+  full DEF-OG-009, observer-role/HAP/N0, THM-P3OG-001/003, certificate, or registry
+  promotion is claimed.
 - Fixed source-distribution smoke validation for archives that place an
   explicit canonical directory entry after files beneath that directory. This
   ordering is now accepted without relaxing exact duplicate, file/ancestor,

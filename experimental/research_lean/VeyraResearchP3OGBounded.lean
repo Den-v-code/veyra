@@ -325,6 +325,50 @@ theorem RESEARCH_OG_T007_bounded_candidate_witness {p : Nat}
     forwardHistory := RESEARCH_OG_T006_history_edges_are_forward
   }
 
+def researchP3OGCurrentExecutableFixtureId : String :=
+  "semantic-complete-history-current"
+
+def researchP3OGCurrentExecutablePrime : Nat := 3
+def researchP3OGCurrentExecutableDepth : Nat := 1
+def researchP3OGCurrentExecutableMaintenanceCredit : Nat := 1
+def researchP3OGCurrentExecutableLeftResidue : Nat := 0
+def researchP3OGCurrentExecutableRightResidue : Nat := 1
+def researchP3OGCurrentExecutableLeftAfterPhase : Nat := 1
+def researchP3OGCurrentExecutableRightAfterPhase : Nat := 2
+
+def researchP3OGCurrentPrimeWitness :
+    VeyraPrimeWitness researchP3OGCurrentExecutablePrime := by
+  constructor <;> decide
+
+def researchP3OGCurrentExecutableClaim : Prop :=
+  researchP3OGClosedState.maintenanceCredit =
+      researchP3OGCurrentExecutableMaintenanceCredit /\
+  researchP3OGLeftCoupled.retainedResidue =
+      some researchP3OGCurrentExecutableLeftResidue /\
+  researchP3OGRightCoupled.retainedResidue =
+      some researchP3OGCurrentExecutableRightResidue /\
+  (researchP3OGTick researchP3OGLeftCoupled).phase =
+      researchP3OGCurrentExecutableLeftAfterPhase /\
+  (researchP3OGTick researchP3OGRightCoupled).phase =
+      researchP3OGCurrentExecutableRightAfterPhase /\
+  researchP3OGRetentionClaim
+      researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth /\
+  researchP3OGAblationClaim
+      researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth
+
+theorem RESEARCH_OG_T008_current_executable_candidate :
+    researchP3OGCurrentExecutableClaim /\
+      ResearchP3OGBoundedWitness
+        researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth := by
+  constructor
+  · refine ⟨rfl, rfl, rfl, rfl, rfl, ?_, ?_⟩
+    · exact RESEARCH_OG_T004_retained_difference_changes_later_phase
+        researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth
+    · exact RESEARCH_OG_T005_matched_ablation_removes_declared_ability
+        researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth
+  · exact RESEARCH_OG_T007_bounded_candidate_witness
+      researchP3OGCurrentPrimeWitness researchP3OGCurrentExecutableDepth
+
 
 #print axioms RESEARCH_OG_T001_f0_f1_arithmetic_distinct
 #print axioms RESEARCH_OG_T002_selection_is_consumed_one_shot
@@ -333,5 +377,6 @@ theorem RESEARCH_OG_T007_bounded_candidate_witness {p : Nat}
 #print axioms RESEARCH_OG_T005_matched_ablation_removes_declared_ability
 #print axioms RESEARCH_OG_T006_history_edges_are_forward
 #print axioms RESEARCH_OG_T007_bounded_candidate_witness
+#print axioms RESEARCH_OG_T008_current_executable_candidate
 
 end Veyra
