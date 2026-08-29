@@ -1,5 +1,22 @@
 # Research Lean module log
 
+### [0.3.0] Bounded P3-OG formal counterpart
+- **Type:** Research / formal bridge
+- **Files:** `VeyraResearchP3OGBounded.lean`, `manifest.json`, README/module memory,
+  checker/tests/package inventory, exact research-count references
+- **What:** Added a constructive finite P3-OG counterpart that imports the exact
+  P3-N2 reduction-network arithmetic and bundles one-shot selection consumption,
+  genuine first closure, retained F_0/F_1 distinction with later phase effect,
+  matched maintenance ablation/removal, and a forward finite event history.
+- **Evidence:** Exact Lean `4.30.0-rc2`, compiler commit
+  `3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc`; 7/7 declarations compile; 2
+  axiom closures are empty, 3 depend only on `propext`, and 2 on `propext` plus
+  `Quot.sound`.
+- **Module version:** 0.2.0 → 0.3.0
+- **Boundary:** No Python/Lean implementation equivalence, full DEF-OG-009,
+  same-token causal efficacy, `EndogenousArithmeticObserverRole`, HAP/N0,
+  THM-P3OG-001/003, stable theorem ID, certificate, or registry promotion.
+
 ### [0.2.0] Singleton-tact path-word realization bridge
 - **Type:** Research / formal bridge
 - **Files:** `VeyraResearchOneTactBridge.lean`, `manifest.json`, `README.md`,

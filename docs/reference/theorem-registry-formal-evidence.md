@@ -208,13 +208,16 @@ or imported-module dependencies, and its source location. A dependency entry of
 
 ## Experimental research appendix
 
-The 86 declarations (40 headlines) in `experimental/research_lean/manifest.json`
+The 93 declarations (47 headlines) in `experimental/research_lean/manifest.json`
 are a separate `INTERNAL_RESEARCH_CANDIDATE` appendix, not stable theorem rows.
 Their exact digests, import graph, toolchain commit, and axiom closures are
 checked by `make research-lean`; THM-001–003 and all X8 statuses below are
 unchanged, and W-001 is not promoted. The one-tact bridge is restricted to the
 explicit singleton-generated path-word realization and exact R9 image; it is not
-an AX-007 exhaustion theorem or a general Mode equivalence.
+an AX-007 exhaustion theorem or a general Mode equivalence. The bounded P3-OG
+source is a constructive finite counterpart using exact P3-N2 F_0/F_1 coordinates;
+it does not establish Python/Lean implementation equivalence, full DEF-OG-009,
+`EndogenousArithmeticObserverRole`, HAP/N0, or THM-P3OG-001/003.
 
 ## Stable nonformal and bounded theorem-card status
 

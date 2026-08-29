@@ -560,9 +560,26 @@
         "RESEARCH_OT_L013_one_tact_zero_native",
         "RESEARCH_OT_L014_one_tact_one_native"
       ]
+    },
+    {
+      "path": "experimental/research_lean/VeyraResearchP3OGBounded.lean",
+      "sha256": "94a87df2576c8628bb5e4d10d562ede94c3241ef6e04d1bd382d3a6a9fc40cb7",
+      "imports": [
+        "VeyraPrimePowerReductionNetwork",
+        "Lean.Elab.Tactic.Omega"
+      ],
+      "declarations": [
+        "RESEARCH_OG_T001_f0_f1_arithmetic_distinct",
+        "RESEARCH_OG_T002_selection_is_consumed_one_shot",
+        "RESEARCH_OG_T003_first_closure_is_genuine",
+        "RESEARCH_OG_T004_retained_difference_changes_later_phase",
+        "RESEARCH_OG_T005_matched_ablation_removes_declared_ability",
+        "RESEARCH_OG_T006_history_edges_are_forward",
+        "RESEARCH_OG_T007_bounded_candidate_witness"
+      ]
     }
   ],
-  "declaration_count": 86,
+  "declaration_count": 93,
   "headline_declarations": [
     "RESEARCH_BS_T001_binomial_sum",
     "RESEARCH_BS_T002_freshman_dream",
@@ -603,7 +620,14 @@
     "RESEARCH_OT_T004_one_tact_rank_length_weave_mul",
     "RESEARCH_OT_T005_one_tact_word_intrinsic_bijection",
     "RESEARCH_OT_T006_native_stitch_realizes_one_tact_stitch",
-    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave"
+    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave",
+    "RESEARCH_OG_T001_f0_f1_arithmetic_distinct",
+    "RESEARCH_OG_T002_selection_is_consumed_one_shot",
+    "RESEARCH_OG_T003_first_closure_is_genuine",
+    "RESEARCH_OG_T004_retained_difference_changes_later_phase",
+    "RESEARCH_OG_T005_matched_ablation_removes_declared_ability",
+    "RESEARCH_OG_T006_history_edges_are_forward",
+    "RESEARCH_OG_T007_bounded_candidate_witness"
   ],
   "headline_claims": {
     "RESEARCH_BS_T001_binomial_sum": {
@@ -805,6 +829,41 @@
       "statement": "(left right : OneTactWord) : VeyraIntrinsicRuntime.weave (oneTactIntrinsicMode left).1 (oneTactIntrinsicMode right).1 = .ready (oneTactIntrinsicMode (oneTactLengthWeave left right)).1",
       "scope": "strict-native weave restricted to the exact R9 image of singleton words",
       "registry_relation": "native realization evidence only; stable THM-003 remains unchanged"
+    },
+    "RESEARCH_OG_T001_f0_f1_arithmetic_distinct": {
+      "statement": "{p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : researchP3OGArithmeticInput hp n .f0 ≠ researchP3OGArithmeticInput hp n .f1",
+      "scope": "P3-N2 integer-family F_0/F_1 coordinates at one arbitrary prime witness and depth; no executable-code equivalence",
+      "registry_relation": "bounded P3-OG research evidence only; no THM-P3OG-001/003 or DEF-OG-010 promotion"
+    },
+    "RESEARCH_OG_T002_selection_is_consumed_one_shot": {
+      "statement": ": researchP3OGConsumeSelection .available = some (.alpha, .consumed) /\\ researchP3OGConsumeSelection .consumed = none",
+      "scope": "singleton finite candidate capability and exact one-shot consumption only; no full blind source-closure theorem",
+      "registry_relation": "bounded DEF-OG-002 pressure only; no observer-role or stable theorem promotion"
+    },
+    "RESEARCH_OG_T003_first_closure_is_genuine": {
+      "statement": ": researchP3OGFormationTick .unformed = .closed /\\ researchP3OGIsClosed .unformed = false /\\ researchP3OGIsClosed (researchP3OGFormationTick .unformed) = true",
+      "scope": "two-state formation model with one unformed-to-closed tick; no Python genealogy or full DEF-OG-003 equivalence",
+      "registry_relation": "bounded first-closure construction only; no THM-P3OG-001 promotion"
+    },
+    "RESEARCH_OG_T004_retained_difference_changes_later_phase": {
+      "statement": "{p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : researchP3OGRetentionClaim hp n",
+      "scope": "fixed period-3 semantic states whose retained residues are proved equal to exact P3-N2 F_0/F_1 coordinate values; equal immediate response, one common tick, later phase divergence",
+      "registry_relation": "direct arithmetic-source-to-semantic-effect bounded bridge; no full same-token causal-efficacy or THM-P3OG-001 promotion"
+    },
+    "RESEARCH_OG_T005_matched_ablation_removes_declared_ability": {
+      "statement": "{p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : researchP3OGAblationClaim hp n",
+      "scope": "same P3-N2-bound F_0/F_1 semantic states, fixed maintenance component, matched pre-tick state except control, same tick removes boundary and retained residue",
+      "registry_relation": "direct arithmetic-bound typed-ablation/removal evidence only; no full DEF-OG-006/007 or THM-P3OG-003 promotion"
+    },
+    "RESEARCH_OG_T006_history_edges_are_forward": {
+      "statement": ": researchP3OGHistoryClaim",
+      "scope": "explicit finite event-rank DAG and declared parent edges only; no complete source-closure or token-ancestry theorem",
+      "registry_relation": "bounded noncircular-history evidence only; full DEF-OG-009 remains open"
+    },
+    "RESEARCH_OG_T007_bounded_candidate_witness": {
+      "statement": "{p : Nat} (hp : VeyraPrimeWitness p) (n : Nat) : ResearchP3OGBoundedWitness hp n",
+      "scope": "bundled finite construction joining P3-N2 arithmetic, one-shot selection, first closure, retention, ablation/removal, and forward history",
+      "registry_relation": "internal bounded P3-OG candidate only; no EndogenousArithmeticObserverRole, HAP/N0, THM-P3OG-001, or registry promotion"
     }
   },
   "axiom_closure": {
@@ -1040,11 +1099,30 @@
     "RESEARCH_OT_L013_one_tact_zero_native": [],
     "RESEARCH_OT_L014_one_tact_one_native": [
       "propext"
+    ],
+    "RESEARCH_OG_T001_f0_f1_arithmetic_distinct": [
+      "propext"
+    ],
+    "RESEARCH_OG_T002_selection_is_consumed_one_shot": [],
+    "RESEARCH_OG_T003_first_closure_is_genuine": [],
+    "RESEARCH_OG_T004_retained_difference_changes_later_phase": [
+      "propext"
+    ],
+    "RESEARCH_OG_T005_matched_ablation_removes_declared_ability": [
+      "propext"
+    ],
+    "RESEARCH_OG_T006_history_edges_are_forward": [
+      "propext",
+      "Quot.sound"
+    ],
+    "RESEARCH_OG_T007_bounded_candidate_witness": [
+      "propext",
+      "Quot.sound"
     ]
   },
   "source_roots": {
     "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
-    "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
+    "research": "2bf70ad06cd7204e2ae4b6e32c6d474a32397b720f3fc68e172a97990cbf58d7"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "db8cff1bc2f73d05394b9fea114f2f46aa0aa2547fbbd51993a5d6aed5eee751"
 }

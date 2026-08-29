@@ -16,12 +16,15 @@ an explicit non-claim boundary.
 ## Experimental research candidate
 
 `experimental/research_lean/` is separate from the stable 53-source inventory.
-Its manifest binds nine sources, 86 declarations (40 headlines), imports,
+Its manifest binds ten sources, 93 declarations (47 headlines), imports,
 digests, exact Lean `4.30.0-rc2` commit, and every printed axiom closure.
 `make research-lean` verifies a fresh temporary snapshot. It does not promote
 stable IDs: THM-001–003 remain conjectures and W-001 remains unpromoted. The
 one-tact bridge covers only the explicit singleton-generated path-word
 realization and exact R9 image; number theory remains classical local `Nat`/`Int`.
+The bounded P3-OG source is a finite formal counterpart using exact P3-N2 F_0/F_1
+coordinates; it does not prove Python/Lean equivalence, full DEF-OG-009,
+observer-role admission, HAP/N0, or THM-P3OG-001/003.
 - `VeyraObserverSynthesisReplay.lean` is an `INTERNAL_RESEARCH_CANDIDATE`
   abstract slice: it proves functional replay determinism/sound acceptance,
   pointwise target preservation under an explicitly supplied bijective
