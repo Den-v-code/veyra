@@ -16,15 +16,17 @@ an explicit non-claim boundary.
 ## Experimental research candidate
 
 `experimental/research_lean/` is separate from the stable 53-source inventory.
-Its manifest binds ten sources, 87 declarations (41 headlines), imports,
+Its manifest binds ten sources, 88 declarations (42 headlines), imports,
 digests, exact Lean `4.30.0-rc2` commit, and every printed axiom closure.
 `make research-lean` verifies a fresh temporary snapshot. It does not promote
 stable IDs: THM-001–003 remain conjectures and W-001 remains unpromoted. The
 one-tact bridge covers only the explicit singleton-generated path-word
 realization and exact R9 image. The native-number research bridge additionally
-connects any already-ready native Mode's exact tact count to stable THM-F002;
-it does not establish prime infinitude, Fermat, a third theorem-derived layer,
-or R8 promotion. Other research number theory remains classical local `Nat`/`Int`.
+connects any already-ready native Mode's exact tact count to stable THM-F002
+and, under an explicit local `Prime run.length` premise, to the existing general
+research Fermat corollary. It does not establish native prime generation,
+unit-Breath/orbit coverage, stable THM-F003, a third theorem-derived layer, or
+R8 promotion. Other research number theory remains classical local `Nat`/`Int`.
 - `VeyraObserverSynthesisReplay.lean` is an `INTERNAL_RESEARCH_CANDIDATE`
   abstract slice: it proves functional replay determinism/sound acceptance,
   pointwise target preservation under an explicitly supplied bijective
