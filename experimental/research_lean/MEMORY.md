@@ -1,9 +1,9 @@
 # Research Lean module memory
 
-Version: **0.3.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
+Version: **0.4.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
 
 - `manifest.json` is canonical: exactly 53 stable dependencies, ten research
-  sources, 87 declarations, 41 literal headline claim rows, 87 axiom-closure
+  sources, 88 declarations, 42 literal headline claim rows, 88 axiom-closure
   rows, and domain-separated aggregate roots.
 - `scripts/check_research_lean.py` always uses a fresh temporary snapshot and
   `.olean` tree, exact toolchain version/commit, bounded work, token-aware
@@ -15,10 +15,24 @@ Version: **0.3.0**. Status: **`INTERNAL_RESEARCH_CANDIDATE`**.
   `Nat`/`Int`, not native Veyra arithmetic.
 - One-tact bridge scope is the explicit singleton-generated path-word realization
   and its exact R9 image only; it is not an AX-007 exhaustion theorem.
-- Native-number scope is one carrier bridge only: a ready native Mode exposes
-  its exact tact count through the length observer, and the existing THM-F002
-  law is applied to that same count. No prime infinitude, Fermat, stable theorem
-  ID, layer promotion, or blanket native-number formalization follows.
+- Native-number scope now has two carrier theorems: a ready native Mode exposes
+  its exact tact count through the length observer; stable THM-F002 applies to
+  that count, and the existing general research Fermat corollary applies under
+  the explicit local `Prime run.length` premise. No native prime generation,
+  unit-Breath/orbit coverage, stable THM-F003, layer promotion, or blanket
+  native-number formalization follows.
+
+## Session Notes (2026-08-30) — prime-length Fermat bridge
+
+- Added `RESEARCH_NN_T002_ready_mode_prime_length_fermat` in the existing
+  native-number research source. For any already-ready native Mode, if its exact
+  tact count satisfies local `Veyra.Prime` and does not divide `a`, the existing
+  general Fermat corollary yields `a^(run.length-1) % run.length = 1`.
+- The theorem reuses the same neutral length carrier as T001 and imports the
+  already-audited Fermat corollary rather than modeling native unit Breaths or
+  multiplicative orbits. Exact closure is `propext` + `Quot.sound`.
+- Exact replay: 63/63 sources, 88/88 declarations and axiom rows, no skipped
+  sources. Stable THM-F003 remains executable evidence only; no R8 promotion.
 
 ## Session Notes (2026-08-30)
 
