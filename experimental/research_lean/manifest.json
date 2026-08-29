@@ -563,17 +563,19 @@
     },
     {
       "path": "experimental/research_lean/VeyraResearchNativeNumberBridge.lean",
-      "sha256": "2d2071f756eed0a50fbcace4fb76253bb72b0396d4ca3d6f9fb199fa4f54bba7",
+      "sha256": "99e9cc89419a6fd1bde5969570d526bd3630be7dd1d201d06fc5ab041871d667",
       "imports": [
         "VeyraNativeSemantics",
-        "VeyraEcho"
+        "VeyraEcho",
+        "VeyraResearchFermatCorollary"
       ],
       "declarations": [
-        "RESEARCH_NN_T001_ready_mode_length_euclid_escape"
+        "RESEARCH_NN_T001_ready_mode_length_euclid_escape",
+        "RESEARCH_NN_T002_ready_mode_prime_length_fermat"
       ]
     }
   ],
-  "declaration_count": 87,
+  "declaration_count": 88,
   "headline_declarations": [
     "RESEARCH_BS_T001_binomial_sum",
     "RESEARCH_BS_T002_freshman_dream",
@@ -615,7 +617,8 @@
     "RESEARCH_OT_T005_one_tact_word_intrinsic_bijection",
     "RESEARCH_OT_T006_native_stitch_realizes_one_tact_stitch",
     "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave",
-    "RESEARCH_NN_T001_ready_mode_length_euclid_escape"
+    "RESEARCH_NN_T001_ready_mode_length_euclid_escape",
+    "RESEARCH_NN_T002_ready_mode_prime_length_fermat"
   ],
   "headline_claims": {
     "RESEARCH_BS_T001_binomial_sum": {
@@ -822,6 +825,11 @@
       "statement": "(run : List VeyraTact) (readyMode : VeyraMode) (ready : evalMode run = .ready readyMode) (k : Nat) : observeMode .length run = some (.length run.length) ∧ (run.length * k + 1) % run.length = 1 % run.length",
       "scope": "any tact list already evaluated as a ready native Mode: exact native length observation and reuse of stable THM-F002 on that same run.length",
       "registry_relation": "research-only carrier bridge for native-number N1; no R8/layer promotion, prime infinitude, Fermat, or blanket native-number formalization"
+    },
+    "RESEARCH_NN_T002_ready_mode_prime_length_fermat": {
+      "statement": "(run : List VeyraTact) (readyMode : VeyraMode) (ready : evalMode run = .ready readyMode) (a : Nat) (hp : Prime run.length) (hpa : ¬ run.length ∣ a) : observeMode .length run = some (.length run.length) ∧ a ^ (run.length - 1) % run.length = 1",
+      "scope": "any tact list already evaluated as a ready native Mode whose exact tact count satisfies local Veyra.Prime: exact length observation plus the general Fermat congruence for any a not divisible by that count",
+      "registry_relation": "research-only conditional carrier for the executable F003 lane; no unit-Breath/orbit coverage, prime generation or resonance-prime theory, stable THM-F003, R8/layer promotion, certificate, or registry promotion"
     }
   },
   "axiom_closure": {
@@ -1060,11 +1068,15 @@
     ],
     "RESEARCH_NN_T001_ready_mode_length_euclid_escape": [
       "propext"
+    ],
+    "RESEARCH_NN_T002_ready_mode_prime_length_fermat": [
+      "propext",
+      "Quot.sound"
     ]
   },
   "source_roots": {
     "base": "01cd6bff50b4bd86f2937e902ada183add2dcda496593ec62145384d7cc47ed2",
-    "research": "28c8e91bc8b3158fa377624dfb8b19970289f7f59eba1f2dbfec0f0c71cb75ce"
+    "research": "9726fafa841f6a8c1c766bd42edea8e939085f65c800f4337c44762c2245354a"
   },
-  "proof_root": "f4bfdd130b8abcc21e31a04e5eef0c994e2deabeb90f236303e207cda4e746ad"
+  "proof_root": "22c7764e52b6c7f2c988e0996f734bd777cdec8d1d218072bc49ec4eec0d2797"
 }
