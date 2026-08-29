@@ -208,23 +208,25 @@ or imported-module dependencies, and its source location. A dependency entry of
 
 ## Experimental research appendix
 
-The 87 declarations (41 headlines) in `experimental/research_lean/manifest.json`
+The 88 declarations (42 headlines) in `experimental/research_lean/manifest.json`
 are a separate `INTERNAL_RESEARCH_CANDIDATE` appendix, not stable theorem rows.
 Their exact digests, import graph, toolchain commit, and axiom closures are
 checked by `make research-lean`; THM-001–003 and all X8 statuses below are
 unchanged, and W-001 is not promoted. The one-tact bridge is restricted to the
 explicit singleton-generated path-word realization and exact R9 image; it is not
 an AX-007 exhaustion theorem or a general Mode equivalence. The native-number
-research bridge carries only the exact tact count of an already-ready native
-Mode into stable THM-F002; no prime infinitude, Fermat, third theorem-derived
-layer, R8 promotion, certificate, or registry promotion follows.
+research bridge carries the exact tact count of an already-ready native Mode
+into stable THM-F002 and, under explicit local `Prime run.length`, into the
+existing general research Fermat corollary. No native prime generation,
+unit-Breath/orbit coverage, stable THM-F003, third theorem-derived layer, R8
+promotion, certificate, or registry promotion follows.
 
 ## Stable nonformal and bounded theorem-card status
 
 | ID family | Status | Dependencies | Evidence | Exact boundary |
 |---|---|---|---|---|
 | `THM-001`–`THM-003` | `CONJECTURE` | `AX-007`, `LEM-001`, then preceding theorem | `docs/08_weave_and_n_shadow.md` | Natural/addition/multiplication shadows; not foundations of ordinary arithmetic. |
-| `THM-F003` | `EXECUTABLE_EVIDENCE` | native `Mode`/`Breath` length observer | `src/core/native_number_theorems.py`; focused tests | Finite prime-period Fermat rows only; no Lean theorem. |
+| `THM-F003` | `EXECUTABLE_EVIDENCE` | native `Mode`/`Breath` length observer | `src/core/native_number_theorems.py`; focused tests; research Lean carrier | Finite prime-period Fermat rows remain executable evidence. Research Lean now proves only the conditional general congruence for an already-ready Mode whose exact tact count is supplied as local `Prime`; native unit-Breath construction, orbit/coverage evidence and stable THM-F003 remain unformalized/unpromoted. |
 | X8 fixed cards (`THM_A001`–`A006`, `B001`, `C001`–`C002`, `G001`–`G005`, `P001`–`P003`, `S001`–`S002`) | `FORMALLY_PROVED` | fixed literal fixtures | corresponding `Veyra{Algebra,Combinatorics,Cyclic,Geometry,Probability,Statistics}.lean` | The exact numerals/samples only; no general analysis, geometry, probability or statistics theorem. |
 | `THM-D2-001`–`005` | `EXECUTABLE_EVIDENCE` with formal auxiliary lemmas | exact five-inference catalog | `src/core/productivity_counterpressure*.py`; `VeyraProductivityCounterpressure.lean` | Refutes only the five exact implications; no generator nonexistence. |
 | `THM-D3-001`–`011` | `FORMALLY_PROVED` | exact periodic-family ledger | `VeyraAllDepthFamily.lean`; focused certificate tests | One periodic compatible family; no completed carrier or generic introduction rule. |
