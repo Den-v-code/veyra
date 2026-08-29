@@ -1,5 +1,19 @@
 # Research Lean module log
 
+### [0.4.0] Native prime-length Fermat carrier bridge
+- **Type:** Research / anti-island formal bridge
+- **Files:** existing `VeyraResearchNativeNumberBridge.lean`, manifest/checker
+  inventory, existing native-number hostile test, evidence references
+- **What:** Added one general conditional theorem connecting an already-ready
+  native Mode's exact tact count to the existing research Fermat corollary under
+  the explicit local `Prime run.length` and nondivisibility premises.
+- **Evidence:** Exact Lean `4.30.0-rc2`; 63/63 source replay, 88/88 declarations
+  and axiom rows; new headline closure is exactly `propext, Quot.sound`.
+- **Module version:** 0.3.0 → 0.4.0
+- **Boundary:** No native prime generation/resonance-prime theory, unit-Breath
+  or orbit/coverage proof, stable THM-F003, third theorem-derived layer, R8
+  promotion, certificate, or registry promotion.
+
 ### [0.3.0] Native-number ready-mode F002 carrier bridge
 - **Type:** Research / anti-island formal bridge
 - **Files:** `VeyraResearchNativeNumberBridge.lean`, neutral native length
