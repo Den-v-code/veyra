@@ -93,3 +93,19 @@ def test_native_euclid_rows_are_carried_by_general_research_lean_bridge():
     assert "RESEARCH_NN_T001_ready_mode_length_euclid_escape" in lean_source
     assert "native_length_observes_ready_mode run readyMode ready" in lean_source
     assert "THM_F002_euclid_escape_mod run.length k" in lean_source
+
+
+def test_native_fermat_rows_are_carried_by_general_prime_length_lean_bridge():
+    row = native_fermat_phase_row(5)
+    lean_source = Path(
+        "experimental/research_lean/VeyraResearchNativeNumberBridge.lean"
+    ).read_text(encoding="utf-8")
+    assert row.status == "derived"
+    assert row.mode_length == 5
+    assert row.residues == (1, 1, 1, 1)
+    assert "RESEARCH_NN_T002_ready_mode_prime_length_fermat" in lean_source
+    assert "(hp : Prime run.length)" in lean_source
+    assert (
+        "RESEARCH_FC_T002_fermat_corollary_one run.length a hp hpa"
+        in lean_source
+    )
