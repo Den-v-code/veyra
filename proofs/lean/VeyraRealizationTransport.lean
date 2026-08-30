@@ -116,6 +116,34 @@ theorem normalizedLabels_distinction_pullback
       ¬ pullback stateMap (relationOfLabels target) first second := by
   exact not_congr (normalizedLabels_realize_pullback stateMap target source same first second)
 
+/-- Ordered off-diagonal pairs distinguished by one concrete labeling. -/
+def DistinguishedByLabels {State : Type u}
+    (labels : LabelPartition State) (first second : State) : Prop :=
+  first ≠ second ∧ ¬ relationOfLabels labels first second
+
+/--
+The normalized label bridge induces exactly the raw R16-style distinction
+predicate: off-diagonal source pairs are distinguished precisely when their
+images are distinguished by the target labeling.
+-/
+theorem normalizedLabels_rawDistinction_pullback
+    {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target)
+    (source : LabelPartition Source)
+    (same : SamePartitionLabels source (pullbackLabels stateMap target))
+    (first second : Source) :
+    DistinguishedByLabels source first second ↔
+      (first ≠ second ∧
+        ¬ pullback stateMap (relationOfLabels target) first second) := by
+  constructor
+  · intro h
+    exact ⟨h.1, (normalizedLabels_distinction_pullback
+      stateMap target source same first second).mp h.2⟩
+  · intro h
+    exact ⟨h.1, (normalizedLabels_distinction_pullback
+      stateMap target source same first second).mpr h.2⟩
+
 /-- Cost nonincrease is an explicit hypothesis on an admitted closure action;
 it is not inferred from relation pullback alone. -/
 def CostNonincreasing {SourceClosure : Type u} {TargetClosure : Type v}
@@ -151,6 +179,7 @@ theorem cost_nonincrease_composition
 #print axioms relationOfLabels_pullback
 #print axioms normalizedLabels_realize_pullback
 #print axioms normalizedLabels_distinction_pullback
+#print axioms normalizedLabels_rawDistinction_pullback
 #print axioms cost_nonincrease_identity
 #print axioms cost_nonincrease_composition
 

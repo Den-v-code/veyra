@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Extended the realization-transport research bridge through the exact raw R16
+  distinction boundary. Lean now characterizes ordered off-diagonal pairs
+  distinguished by normalized class labels and transports that predicate along
+  the existing pullback theorem. The exhaustive small-total-map runtime test
+  now compares every generated closure partition against production
+  `distinction_set`. This does not prove greatest-admitted descent existence,
+  residual-chain correspondence, Python implementation equivalence, P1-A
+  vertical transport, category/functor/naturality, or promotion.
 - Extended the existing `VeyraRealizationTransport.lean` research candidate with
   a concrete-label representation bridge: raw label pullback induces the same
   extensional partition relation, and a normalized source labeling realizes
