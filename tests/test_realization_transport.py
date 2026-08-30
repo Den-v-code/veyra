@@ -8,6 +8,7 @@ from pathlib import Path
 
 import pytest
 
+from src.core.observer_descent import distinction_set
 from src.core.observer_realization import (
     observer_realization_context,
     realize_observer_doctrine_r16,
@@ -85,6 +86,20 @@ def _same_partition_relation(left: tuple[int, ...], right: tuple[int, ...]) -> b
         (left[first] == left[second]) == (right[first] == right[second])
         for first in range(len(left))
         for second in range(len(left))
+    )
+
+
+def _distinction_pairs_from_partition(
+    states: tuple[object, ...],
+    partition: tuple[int, ...],
+) -> frozenset[tuple[object, object]]:
+    if len(states) != len(partition):
+        raise AssertionError("partition/state carrier mismatch")
+    return frozenset(
+        (states[first], states[second])
+        for first in range(len(states))
+        for second in range(len(states))
+        if first != second and partition[first] != partition[second]
     )
 
 
@@ -306,7 +321,7 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
     for source_count in range(1, 4):
         for ordinal, graph in enumerate(product(range(3), repeat=source_count)):
             source_depths = tuple(target_depths[index] for index in graph)
-            _, _, _, target_witness, receipt = _receipt(
+            source, _, source_witness, target_witness, receipt = _receipt(
                 doctrine,
                 source_depths,
                 target_depths,
@@ -327,12 +342,29 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
                 )
             )
 
+            states = tuple(item.state for item in source.inputs)
+            assert len(source_witness.doctrine.observers) == len(
+                source_witness.closure
+            )
+            for finite_observer, closure_row in zip(
+                source_witness.doctrine.observers,
+                source_witness.closure,
+                strict=True,
+            ):
+                assert distinction_set(finite_observer, states) == (
+                    _distinction_pairs_from_partition(
+                        states,
+                        closure_row.partition,
+                    )
+                )
+
     lean_source = Path("proofs/lean/VeyraRealizationTransport.lean").read_text(
         encoding="utf-8"
     )
     assert "theorem relationOfLabels_pullback" in lean_source
     assert "theorem normalizedLabels_realize_pullback" in lean_source
     assert "theorem normalizedLabels_distinction_pullback" in lean_source
+    assert "theorem normalizedLabels_rawDistinction_pullback" in lean_source
 
 
 def test_scope_states_single_arrow_and_explicit_nonclaims():
