@@ -32,6 +32,7 @@ PORTABLE_TESTS = (
     "tests/test_certificate_result_invariants.py",
     "tests/test_core_assertion_invariants.py",
     "tests/test_observer_realization.py",
+    "tests/test_observer_descent_reduction.py",
     "tests/test_claim_composition.py",
     "tests/test_claim_composition_adversarial.py",
     "tests/test_claim_composition_export.py",
