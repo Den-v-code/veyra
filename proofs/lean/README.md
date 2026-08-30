@@ -3,7 +3,7 @@
 This directory contains 53 Lean source modules. The table is exhaustive over the repository `.lean` sources. Four additional PΩ1 bridge declarations (`THM_POMEGA1_012`–`015`) are intentionally **not** repository files: they are generated deterministically at check time and digest-pinned (see “Generated bridge declarations” below). Status refers to the public claim supported by the source, not merely to the presence of compilable declarations. Exact released declaration locations and dependencies are listed in `../../THEOREMS.md`.
 
 The separate [`experimental/research_lean/`](../../experimental/research_lean/)
-candidate is not part of the stable module inventory. Its nine files and 86 declarations are
+candidate is not part of the stable module inventory. Its ten files and 87 declarations are
 manifest-bound and freshly checked by `make research-lean`, but retain
 `INTERNAL_RESEARCH_CANDIDATE` status and do not alter this inventory.
 
@@ -36,7 +36,7 @@ manifest-bound and freshly checked by `make research-lean`, but retain
 | `VeyraNativeSemantics.lean` | native constructor semantics | `FORMALLY_PROVED` | `THM_R4_001_empty_breath_blocks`, `THM_R4_002_closed_tact_is_mode`, `THM_R4_003_open_tact_blocks`, `THM_R4_004_two_tact_cycle_is_mode`, `THM_R4_005_kind_echoes_closed_modes`, `THM_R4_006_boundary_mismatch_blocks`, `THM_R4_007_anchored_silence_is_mode` |
 | `VeyraNecklaceCongruence.lean` | exact finite necklace-congruence cards (N8): rotation orbits, prime-length dichotomy, Fermat partition counts, Gauss primitive counts, composite counterpressure | `FORMALLY_PROVED` | `THM_N8_001_rotation_composition_len3`, `THM_N8_002_orbit_dichotomy_p3_k2`, `THM_N8_003_orbit_dichotomy_p5_k2`, `THM_N8_004_fermat_count_p3_k2`, `THM_N8_005_fermat_count_p5_k2`, `THM_N8_006_gauss_primitive_count_n4_k2`, `THM_N8_007_composite_dichotomy_counterexample` |
 | `VeyraObserverCore.lean` | typed observer calculus | `FORMAL_CONSTRUCTION` | none |
-| `VeyraObserverDescent.lean` | conditional observer-descent partition spine | `FORMALLY_PROVED` | `THM_R16_001_residual_chain_partition`, `THM_R16_002_residual_synergy_disjoint`, `THM_R16_003_zero_synergy_chain_rule` |
+| `VeyraObserverDescent.lean` | conditional observer-descent partition spine | `FORMALLY_PROVED` | `THM_R16_001_residual_chain_partition`, `THM_R16_002_residual_synergy_disjoint`, `THM_R16_003_zero_synergy_chain_rule`; separate Research Lean Z4 audit proves only the exact 16-row bounded best-lower table plus one finite partiality witness |
 | `VeyraObserverLattice.lean` | TR-1 transfer spine: reachability-closure monotonicity (real induction), omega witness transport, primitivity stability, replay fixture | `FORMALLY_PROVED` | `THM_TR1_001_reaches_monotone`, `THM_TR1_002_witness_transport`, `THM_TR1_003_primitivity_stability`, `THM_TR1_004_replay_fixture` |
 | `VeyraObserverPatchAtlas.lean` | finite patch atlas/gluing criterion plus two nonpromoted uniqueness helpers | `FORMALLY_PROVED` | `THM_G4_001_exact_gluing_exists_iff_no_local_contradiction`, `THM_G4_002_triangle_singleton_overlaps_pass`, `THM_G4_003_triangle_exact_gluing_impossible` |
 | `VeyraObserverProof.lean` | proof-grade observer laws | `FORMALLY_PROVED` | `THM_R11_001_ready_echo_characterization`, `THM_R11_002_ready_domain_reflexivity`, `THM_R11_003_r7_equality_implies_ready_echo`, `THM_R11_004_tail_silence_obstruction`, `THM_R11_005_both_side_echo_domain_obstruction`, `THM_R11_006_crest_noncollapse_witness` |

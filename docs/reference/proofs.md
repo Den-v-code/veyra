@@ -16,7 +16,7 @@ an explicit non-claim boundary.
 ## Experimental research candidate
 
 `experimental/research_lean/` is separate from the stable 53-source inventory.
-Its manifest binds nine sources, 86 declarations (40 headlines), imports,
+Its manifest binds ten sources, 87 declarations (41 headlines), imports,
 digests, exact Lean `4.30.0-rc2` commit, and every printed axiom closure.
 `make research-lean` verifies a fresh temporary snapshot. It does not promote
 stable IDs: THM-001–003 remain conjectures and W-001 remains unpromoted. The
@@ -63,7 +63,12 @@ realization and exact R9 image; number theory remains classical local `Nat`/`Int
   reversible norm-map closure under tensor product/composition. It is not a
   source/object-bound bridge to Python `Q(sqrt(2))[i]`, Hilbert spaces, or a
   physical apparatus.
-- R16 reduction audit is executable Python evidence, not a new formal theorem:
+- R16 reduction now has a standalone bounded Research Lean mirror for the exact
+  16 Z4 shift/target best-lower rows plus one five-state no-greatest partiality
+  witness. Hostile tests bind the exact finite partitions/shifts/partiality
+  fixture to the executable runtime; the Lean mirror does not formally depend
+  on `THM-R16-001..003`. The existing 64 composition-gap audit remains executable
+  Python evidence, not a formal row:
   it identifies best-lower approximation and composition precision loss, while
   a five-state regression blocks unconditional descent totality.
 - X7 prep ledger: `formal_export_prep.py`; X8 captures digest-bound bytes and completes all 19 candidates across 6 files with 0 remaining. Newest scope is only four closed A004–A006/C002 fixtures.

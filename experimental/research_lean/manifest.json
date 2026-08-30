@@ -560,9 +560,17 @@
         "RESEARCH_OT_L013_one_tact_zero_native",
         "RESEARCH_OT_L014_one_tact_one_native"
       ]
+    },
+    {
+      "path": "experimental/research_lean/VeyraResearchR16Z4Audit.lean",
+      "sha256": "63212e21c91bf7e0aa4abcb0d38c5d0c83fe7b344fb966fb2c78d0438da650b2",
+      "imports": [],
+      "declarations": [
+        "RESEARCH_RZ_T001_bounded_best_lower_and_partiality"
+      ]
     }
   ],
-  "declaration_count": 86,
+  "declaration_count": 87,
   "headline_declarations": [
     "RESEARCH_BS_T001_binomial_sum",
     "RESEARCH_BS_T002_freshman_dream",
@@ -603,7 +611,8 @@
     "RESEARCH_OT_T004_one_tact_rank_length_weave_mul",
     "RESEARCH_OT_T005_one_tact_word_intrinsic_bijection",
     "RESEARCH_OT_T006_native_stitch_realizes_one_tact_stitch",
-    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave"
+    "RESEARCH_OT_T007_native_weave_realizes_one_tact_length_weave",
+    "RESEARCH_RZ_T001_bounded_best_lower_and_partiality"
   ],
   "headline_claims": {
     "RESEARCH_BS_T001_binomial_sum": {
@@ -805,6 +814,11 @@
       "statement": "(left right : OneTactWord) : VeyraIntrinsicRuntime.weave (oneTactIntrinsicMode left).1 (oneTactIntrinsicMode right).1 = .ready (oneTactIntrinsicMode (oneTactLengthWeave left right)).1",
       "scope": "strict-native weave restricted to the exact R9 image of singleton words",
       "registry_relation": "native realization evidence only; stable THM-003 remains unchanged"
+    },
+    "RESEARCH_RZ_T001_bounded_best_lower_and_partiality": {
+      "statement": ": z4Shifts.length * z4Observers.length = 16 ∧ z4AuditB = true ∧ z5NoGreatestB = true",
+      "scope": "exact four-state Z4 audit: 4 shifts x 4 admitted observers all have the declared greatest admitted lower row; separate five-state finite doctrine has no greatest admitted lower candidate",
+      "registry_relation": "research-only standalone finite mirror of executable R16 reduction/partiality audit; hostile tests bind exact Z4 partitions/shifts and five-state fixture; no formal correspondence to THM-R16-001..003, universal descent totality, 64-row composition proof, novelty, R8 promotion, or Python/Lean implementation equivalence"
     }
   },
   "axiom_closure": {
@@ -1040,11 +1054,12 @@
     "RESEARCH_OT_L013_one_tact_zero_native": [],
     "RESEARCH_OT_L014_one_tact_one_native": [
       "propext"
-    ]
+    ],
+    "RESEARCH_RZ_T001_bounded_best_lower_and_partiality": []
   },
   "source_roots": {
     "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
-    "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
+    "research": "d2a574edc19637a618be173482355995807200f9e1c5b65e933dd4a6112008e8"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "774f2c0661561adface14741f180fa10d241434449bc4fc79b0493904ad0e2ca"
 }

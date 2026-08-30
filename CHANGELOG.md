@@ -1,6 +1,15 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Added a standalone bounded Research Lean mirror of the R16 reduction audit. One
+  axiom-free theorem checks the exact four-state Z4 table across all four cyclic
+  shifts and four admitted observers (`16/16` greatest-lower rows) and a separate
+  five-state doctrine with no greatest admitted lower candidate. Python hostile
+  coverage binds the exact observer partitions, shifts, expected-best table, and
+  five-state fixture to production `observer_descent`; the Lean source does not
+  formally depend on `THM-R16-001..003`. The 64 composition-gap rows remain executable
+  evidence only; no universal descent totality, novelty, new calculus, R8
+  promotion, or Python/Lean implementation equivalence follows.
 - Fixed source-distribution smoke validation for archives that place an
   explicit canonical directory entry after files beneath that directory. This
   ordering is now accepted without relaxing exact duplicate, file/ancestor,

@@ -1,5 +1,21 @@
 # Research Lean module log
 
+### [0.3.0] Bounded R16 Z4 formal reduction audit
+- **Type:** Research / executable-to-formal bounded audit
+- **Files:** `VeyraResearchR16Z4Audit.lean`, manifest/checker/package inventory,
+  existing R16 reduction hostile test
+- **What:** Formalized the exact 4-state × 4-shift × 4-observer best-lower table
+  and the existing finite no-greatest partiality counterexample. The Python test
+  independently binds the exact Z4 observer partitions, cyclic maps,
+  expected-best table, and exact five-state partiality fixture to production
+  descent. The Lean source is a standalone finite mirror, not a dependency-bound
+  extension of `THM-R16-001..003`.
+- **Evidence:** Exact Lean `4.30.0-rc2`; 63/63 source replay, 87/87 declarations
+  and axiom rows; new headline closure is empty.
+- **Module version:** 0.2.0 → 0.3.0
+- **Boundary:** 64 composition-gap rows stay executable-only. No universal
+  descent totality, novelty, new calculus, R8 promotion, or implementation equivalence.
+
 ### [0.2.0] Singleton-tact path-word realization bridge
 - **Type:** Research / formal bridge
 - **Files:** `VeyraResearchOneTactBridge.lean`, `manifest.json`, `README.md`,

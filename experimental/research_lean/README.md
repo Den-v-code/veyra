@@ -3,9 +3,9 @@
 Status: **`INTERNAL_RESEARCH_CANDIDATE`**. This directory is deliberately
 outside the 53-source stable Lean inventory and is not part of `make verify`.
 
-The canonical `manifest.json` binds nine research sources, their imports and
-SHA-256 digests, 86 declarations (40 headline declarations and 46 helpers), the
-40 literal headline signatures and claim boundaries, and the exact axiom
+The canonical `manifest.json` binds ten research sources, their imports and
+SHA-256 digests, 87 declarations (41 headline declarations and 46 helpers), the
+41 literal headline signatures and claim boundaries, and the exact axiom
 closure printed by Lean. Ordered domain-separated source and proof roots make
 the aggregate review identity explicit. The reviewed toolchain is
 `leanprover/lean4:v4.30.0-rc2`, Lean `4.30.0-rc2`, commit
@@ -22,19 +22,20 @@ the aggregate review identity explicit. The reviewed toolchain is
 | `VeyraResearchPythagorean.lean` | 6 | classical integer identities |
 | `VeyraResearchShadow.lean` | 11 | unary `Recurrence` pulse/silence image only |
 | `VeyraResearchOneTactBridge.lean` | 21 | singleton-tact path-word / Nat / unary `Recurrence` / exact R9-image bridge |
+| `VeyraResearchR16Z4Audit.lean` | 1 | bounded four-state Z4 best-lower audit plus finite no-greatest partiality witness |
 
 The source scanner rejects project-local `sorry`, `admit`, `axiom`,
 `postulate`, `constant`, `opaque`, `unsafe`, `extern`, `implemented_by`, and
 `sorryAx` code tokens. That is not an “axiom-free” claim: the frozen report has
-26 empty closure rows and 60 rows depending on subsets of `propext`,
+27 empty closure rows and 60 rows depending on subsets of `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 The candidate lane also rejects command-level declaration metaprogramming
 (`run_tac`, custom syntax/elaborators/macros, and `Lean.addDecl`) so an unused
-injected axiom cannot sit outside the exact 86-row audit.
+injected axiom cannot sit outside the exact 87-row audit.
 
 Run `make research-lean` for a fresh isolated verification. The checker copies
-the exact 53 stable and nine research sources into a temporary tree, compiles
+the exact 53 stable and ten research sources into a temporary tree, compiles
 a new `.olean` graph, generates all 86 `#check` and `#print axioms` commands,
 and rehashes the originals after execution. It has no persistent cache.
 
@@ -42,19 +43,19 @@ and rehashes the originals after execution. It has no persistent cache.
 
 `source_roots.base` and `source_roots.research` hash the ordered
 `path + NUL + SHA-256` rows under separate length-delimited domains.
-`proof_root` then binds those roots, the exact toolchain identity, all 40
-literal claim/scope/registry rows, and all 86 ordered axiom closures. The root
+`proof_root` then binds those roots, the exact toolchain identity, all 41
+literal claim/scope/registry rows, and all 87 ordered axiom closures. The root
 does not hash itself or claim binary reproducibility.
 
 The rebased candidate manifest binds the current 53-source stable inventory
-and nine research sources at base root
+and ten research sources at base root
 `4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b`,
 research root
-`caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597`,
+`d2a574edc19637a618be173482355995807200f9e1c5b65e933dd4a6112008e8`,
 and proof root
-`dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509`.
+`774f2c0661561adface14741f180fa10d241434449bc4fc79b0493904ad0e2ca`.
 The complete manifest SHA-256 is
-`dd3d0343bd26c16a0177ebf58b8dec82753ce118c708aadb5ff96dbdcde1bba2`.
+`beb2930b364c690cfc3755dc6745188b1a12179e232f166045687dbb453d281c`.
 
 The trusted computing base remains the selected Lean compiler/kernel and its
 reported primitive axioms, local Elan or hosted archive delivery, the Python
@@ -73,6 +74,7 @@ revision is deliberately not embedded in the same commit it names.
   realization. It does not prove that AX-007 excludes additional tacts, does not
   establish general LEM-001, does not identify arbitrary strict modes with `Nat`,
   and does not promote THM-001–003 or W-001.
+- The R16 Z4 audit is a standalone finite Lean mirror bounded to the exact four-state doctrine, four cyclic shifts, four admitted observer partitions, and one separate five-state partiality witness. Hostile Python tests bind those exact partitions, shifts, and the five-state fixture to the executable runtime. It formally covers the 16 best-lower rows only; it does not formally depend on `THM-R16-001..003`, and the 64 composition-gap rows remain executable Python evidence. It proves no universal descent totality, novelty, or promotion.
 - Prime, gcd, and Fermat declarations are classical local `Nat` results, not a
   Veyra resonance-prime theory, native repair, or factorization foundation.
 - Counting identities are not event-theoretic or general probability results.

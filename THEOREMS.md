@@ -72,8 +72,13 @@ complete registry; no local history is required.
 
 ## Experimental research Lean appendix
 
-The nine files under `experimental/research_lean/` contain 86 manifest-bound
-declarations (40 headlines) with status `INTERNAL_RESEARCH_CANDIDATE`. They are
+The bounded R16 Z4 research audit additionally proves, on the exact finite
+four-state doctrine, all 16 cyclic-shift/admitted-observer greatest-lower rows
+and one separate five-state no-greatest witness. It does not formalize the 64
+composition-gap rows, universal descent totality, novelty, or R8 promotion.
+
+The ten files under `experimental/research_lean/` contain 87 manifest-bound
+declarations (41 headlines) with status `INTERNAL_RESEARCH_CANDIDATE`. They are
 not stable registry IDs, do not change any X8 card, and do not promote
 THM-001–003 from `CONJECTURE` or close W-001. The one-tact bridge is restricted
 to the explicit singleton-generated path-word realization and exact R9 image;
