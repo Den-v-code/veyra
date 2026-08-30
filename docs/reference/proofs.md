@@ -53,12 +53,16 @@ realization and exact R9 image; number theory remains classical local `Nat`/`Int
   also bridges concrete class labels to the same extensional pullback relation
   under an explicit equality-class-preservation premise, and maps the resulting
   off-diagonal label inequality to the raw R16-style distinction predicate.
-  Existing exhaustive small-map Python tests check that premise and compare
-  every generated closure partition against production `distinction_set`.
-  This does not formalize Python implementation equivalence, greatest-admitted
-  R16 descent existence, residual-chain correspondence, authoritative replay,
-  receipts in Lean, P1-A vertical transport, category/functor/naturality, or
-  cross-doctrine transport.
+  Existing exhaustive small-map Python tests check that premise, compare every
+  generated closure partition against production `distinction_set`, and replay
+  production `observer_descent` for every target closure observer. For these
+  accepted transport rows, the descent chooses the `source_closure_index`
+  observer already named by the receipt, raw and admitted distinctions coincide,
+  and residual is empty; Lean proves the corresponding pointwise zero-residual
+  consequence from the label pullback bridge. This does not formalize Python
+  implementation equivalence, general R16 descent totality, residual-chain
+  correspondence, receipts in Lean, P1-A vertical transport,
+  category/functor/naturality, or cross-doctrine transport.
 - `THM-F001`: for every observer `o` and object `x`, `echo(o,x,x)`.
 - `THM-F002`: `(n * k + 1) % n = 1 % n`, the product-plus-one arithmetic shadow now used by finite native Mode-length Euclid rows.
 - `THM-F003`: finite prime-period Fermat phase row over native Mode/Breath length observers; Python certificate only.

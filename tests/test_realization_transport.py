@@ -8,7 +8,8 @@ from pathlib import Path
 
 import pytest
 
-from src.core.observer_descent import distinction_set
+from src.core.observer_descent import distinction_set, observer_descent
+from src.core.observer_descent_types import FiniteTransition
 from src.core.observer_realization import (
     observer_realization_context,
     realize_observer_doctrine_r16,
@@ -321,7 +322,7 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
     for source_count in range(1, 4):
         for ordinal, graph in enumerate(product(range(3), repeat=source_count)):
             source_depths = tuple(target_depths[index] for index in graph)
-            source, _, source_witness, target_witness, receipt = _receipt(
+            source, target, source_witness, target_witness, receipt = _receipt(
                 doctrine,
                 source_depths,
                 target_depths,
@@ -358,6 +359,44 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
                     )
                 )
 
+            target_states = tuple(item.state for item in target.inputs)
+            transition = FiniteTransition(
+                f"small-r16-{source_count}-{ordinal}",
+                states,
+                target_states,
+                tuple(
+                    (states[source_index], target_states[target_index])
+                    for source_index, target_index in enumerate(graph)
+                ),
+            )
+            assert len(target_witness.doctrine.observers) == len(
+                receipt.closure_action
+            )
+            for target_observer, action in zip(
+                target_witness.doctrine.observers,
+                receipt.closure_action,
+                strict=True,
+            ):
+                expected_source_observer = (
+                    source_witness.doctrine.observers[
+                        action.source_closure_index
+                    ]
+                )
+                descent = observer_descent(
+                    source_witness.doctrine,
+                    transition,
+                    target_observer,
+                    target_doctrine=target_witness.doctrine,
+                )
+                expected_distinctions = distinction_set(
+                    expected_source_observer,
+                    states,
+                )
+                assert descent.descended_observer == expected_source_observer.name
+                assert descent.raw_distinctions == expected_distinctions
+                assert descent.admitted_distinctions == expected_distinctions
+                assert descent.residual == frozenset()
+
     lean_source = Path("proofs/lean/VeyraRealizationTransport.lean").read_text(
         encoding="utf-8"
     )
@@ -365,6 +404,7 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
     assert "theorem normalizedLabels_realize_pullback" in lean_source
     assert "theorem normalizedLabels_distinction_pullback" in lean_source
     assert "theorem normalizedLabels_rawDistinction_pullback" in lean_source
+    assert "theorem normalizedLabels_admittedRaw_zeroResidual" in lean_source
 
 
 def test_scope_states_single_arrow_and_explicit_nonclaims():

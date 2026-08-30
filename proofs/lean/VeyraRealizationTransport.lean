@@ -144,6 +144,26 @@ theorem normalizedLabels_rawDistinction_pullback
     exact ⟨h.1, (normalizedLabels_distinction_pullback
       stateMap target source same first second).mpr h.2⟩
 
+/--
+When the normalized source labeling is itself the admitted realization of the
+raw pullback distinction, the R16 residual predicate is empty pointwise.
+This is the exact mathematical consequence exercised by accepted transport
+closure rows; it does not prove general descent existence.
+-/
+theorem normalizedLabels_admittedRaw_zeroResidual
+    {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target)
+    (source : LabelPartition Source)
+    (same : SamePartitionLabels source (pullbackLabels stateMap target))
+    (first second : Source) :
+    ¬ ((first ≠ second ∧
+          ¬ pullback stateMap (relationOfLabels target) first second) ∧
+        ¬ DistinguishedByLabels source first second) := by
+  intro residual
+  exact residual.2 ((normalizedLabels_rawDistinction_pullback
+    stateMap target source same first second).mpr residual.1)
+
 /-- Cost nonincrease is an explicit hypothesis on an admitted closure action;
 it is not inferred from relation pullback alone. -/
 def CostNonincreasing {SourceClosure : Type u} {TargetClosure : Type v}
@@ -180,6 +200,7 @@ theorem cost_nonincrease_composition
 #print axioms normalizedLabels_realize_pullback
 #print axioms normalizedLabels_distinction_pullback
 #print axioms normalizedLabels_rawDistinction_pullback
+#print axioms normalizedLabels_admittedRaw_zeroResidual
 #print axioms cost_nonincrease_identity
 #print axioms cost_nonincrease_composition
 

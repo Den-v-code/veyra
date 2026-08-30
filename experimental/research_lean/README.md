@@ -48,13 +48,13 @@ does not hash itself or claim binary reproducibility.
 
 The rebased candidate manifest binds the current 53-source stable inventory
 and nine research sources at base root
-`b6587c7a2fb98cbfbf4edebfed3333c37987c3bb86d29bfee5a9dbf824caab04`,
+`ae7a188f8a4931ca5e5cab8a246b19ca76c3455643b4281e3e30d1621eb33b54`,
 research root
 `caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597`,
 and proof root
-`e5d650a084ceba9bc738838c03e183a8903848bd45ce706eda6916f002814530`.
+`97ea73ee280d4f93964dd1ac779afb69dfb2ffbfee71e8e922242c0fce4ce687`.
 The complete manifest SHA-256 is
-`ad163d430bb73ff4894fb997b0be9407fc31676c22432281b459e061d1ee3208`.
+`609f3a10698752667d9eff77feaf0c567e1d076c22891e2309542e599b59e6d7`.
 
 The trusted computing base remains the selected Lean compiler/kernel and its
 reported primitive axioms, local Elan or hosted archive delivery, the Python
@@ -77,9 +77,12 @@ revision is deliberately not embedded in the same commit it names.
   induce the same extensional pullback relation when an explicit
   `SamePartitionLabels` premise holds, and now carries the corresponding
   off-diagonal label inequality into the raw R16-style distinction predicate.
-  Exhaustive small-map Python tests check the normalization premise and compare
-  every generated closure row against production `distinction_set`. This is not
-  Python implementation equivalence, greatest-admitted R16 descent existence,
+  Exhaustive small-map Python tests check the normalization premise, compare
+  every generated closure row against production `distinction_set`, and replay
+  production `observer_descent` for every target closure observer. On those
+  accepted transport rows the receipt-selected source observer is the exact
+  admitted raw distinction and the residual is empty. This is bounded transport
+  evidence, not Python implementation equivalence, general R16 descent totality,
   residual-chain correspondence, P1-A vertical transport,
   category/functor/naturality, or promotion.
 - Prime, gcd, and Fermat declarations are classical local `Nat` results, not a

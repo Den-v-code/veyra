@@ -1,6 +1,15 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Connected accepted realization transport rows to the production R16 descent
+  algorithm without adding a new receipt family. For every target closure row
+  in the exhaustive small-total-map sweep, `observer_descent` now replays the
+  transport graph, selects the source closure observer named by the receipt's
+  `source_closure_index`, yields identical raw/admitted distinction sets, and
+  has empty residual. Lean proves the corresponding pointwise zero-residual
+  consequence under the already-explicit normalization premise. This is not
+  general descent totality, residual-chain correspondence, Python implementation
+  equivalence, P1-A vertical transport, category/functor/naturality, or promotion.
 - Extended the realization-transport research bridge through the exact raw R16
   distinction boundary. Lean now characterizes ordered off-diagonal pairs
   distinguished by normalized class labels and transports that predicate along
