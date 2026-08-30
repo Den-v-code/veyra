@@ -1,6 +1,14 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Extended the existing `VeyraRealizationTransport.lean` research candidate with
+  a concrete-label representation bridge: raw label pullback induces the same
+  extensional partition relation, and a normalized source labeling realizes
+  that pullback under an explicit equality-class-preservation premise. The
+  existing exhaustive small-total-map runtime test now checks that premise for
+  every current closure-action row at source sizes 1..3. No new receipt/DTO,
+  Python implementation equivalence, R16 descent-existence theorem, P1-A
+  vertical law, category/functor/naturality, or promotion is introduced.
 - Fixed source-distribution smoke validation for archives that place an
   explicit canonical directory entry after files beneath that directory. This
   ordering is now accepted without relaxing exact duplicate, file/ancestor,

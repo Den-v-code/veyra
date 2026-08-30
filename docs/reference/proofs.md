@@ -46,12 +46,16 @@ realization and exact R9 image; number theory remains classical local `Nat`/`Int
   preservation, and exact list-relative exhaustion. It does not prove the
   concrete Rust lower bound/ledger, VOR5 framing or signatures, Linux custody,
   a concrete catalog complete, or any universal discovery result.
-- `VeyraRealizationTransport.lean` is an axiom-free
+- `VeyraRealizationTransport.lean` is an
   `INTERNAL_RESEARCH_CANDIDATE` for abstract relation inverse-image identity,
   composition, indiscrete-bottom and common-refinement preservation, plus
-  composition of an explicitly hypothesized cost-nonincreasing action. It does
-  not formalize Python, R11/R16 correspondence, authoritative replay, receipts,
-  concrete contexts, P1-A, or cross-doctrine transport.
+  composition of an explicitly hypothesized cost-nonincreasing action. It now
+  also bridges concrete class labels to the same extensional pullback relation
+  under an explicit equality-class-preservation premise. Existing exhaustive
+  small-map Python tests check that premise for normalized runtime receipt rows.
+  This does not formalize Python implementation equivalence, R11/R16 descent
+  existence, authoritative replay, receipts in Lean, P1-A vertical transport,
+  category/functor/naturality, or cross-doctrine transport.
 - `THM-F001`: for every observer `o` and object `x`, `echo(o,x,x)`.
 - `THM-F002`: `(n * k + 1) % n = 1 % n`, the product-plus-one arithmetic shadow now used by finite native Mode-length Euclid rows.
 - `THM-F003`: finite prime-period Fermat phase row over native Mode/Breath length observers; Python certificate only.

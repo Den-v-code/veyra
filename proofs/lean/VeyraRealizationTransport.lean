@@ -58,6 +58,64 @@ theorem pullback_commonRefinement
       commonRefinement (pullback stateMap left) (pullback stateMap right) := by
   rfl
 
+/-- A concrete finite partition representation by class labels. -/
+abbrev LabelPartition (State : Type u) := State → Nat
+
+/-- The extensional equivalence relation induced by concrete class labels. -/
+def relationOfLabels {State : Type u}
+    (labels : LabelPartition State) : PartitionRel State :=
+  fun left right => labels left = labels right
+
+/-- Pull concrete target labels back along the same total state map. -/
+def pullbackLabels {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target) : LabelPartition Source :=
+  fun source => target (stateMap source)
+
+/-- Two concrete labelings encode the same extensional partition. -/
+def SamePartitionLabels {State : Type u}
+    (left right : LabelPartition State) : Prop :=
+  ∀ first second, left first = left second ↔ right first = right second
+
+/-- Raw label pullback induces exactly the abstract relation pullback. -/
+theorem relationOfLabels_pullback
+    {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target)
+    (first second : Source) :
+    relationOfLabels (pullbackLabels stateMap target) first second ↔
+      pullback stateMap (relationOfLabels target) first second := by
+  rfl
+
+/--
+A normalized source labeling realizes the same relation pullback whenever the
+normalization preserves equality classes.  The equality-class premise is
+deliberately explicit: Python first-occurrence normalization is executable
+evidence, not proved here.
+-/
+theorem normalizedLabels_realize_pullback
+    {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target)
+    (source : LabelPartition Source)
+    (same : SamePartitionLabels source (pullbackLabels stateMap target))
+    (first second : Source) :
+    relationOfLabels source first second ↔
+      pullback stateMap (relationOfLabels target) first second := by
+  exact (same first second).trans (relationOfLabels_pullback stateMap target first second)
+
+/-- The same bridge transports pairwise distinction, the predicate used by R16-style debt rows. -/
+theorem normalizedLabels_distinction_pullback
+    {Source : Type u} {Target : Type v}
+    (stateMap : Source → Target)
+    (target : LabelPartition Target)
+    (source : LabelPartition Source)
+    (same : SamePartitionLabels source (pullbackLabels stateMap target))
+    (first second : Source) :
+    (¬ relationOfLabels source first second) ↔
+      ¬ pullback stateMap (relationOfLabels target) first second := by
+  exact not_congr (normalizedLabels_realize_pullback stateMap target source same first second)
+
 /-- Cost nonincrease is an explicit hypothesis on an admitted closure action;
 it is not inferred from relation pullback alone. -/
 def CostNonincreasing {SourceClosure : Type u} {TargetClosure : Type v}
@@ -90,6 +148,9 @@ theorem cost_nonincrease_composition
 #print axioms pullback_composition
 #print axioms pullback_indiscrete
 #print axioms pullback_commonRefinement
+#print axioms relationOfLabels_pullback
+#print axioms normalizedLabels_realize_pullback
+#print axioms normalizedLabels_distinction_pullback
 #print axioms cost_nonincrease_identity
 #print axioms cost_nonincrease_composition
 

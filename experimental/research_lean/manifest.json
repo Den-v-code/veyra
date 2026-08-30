@@ -353,7 +353,7 @@
     },
     {
       "path": "proofs/lean/VeyraRealizationTransport.lean",
-      "sha256": "6020d7d10f7736ab41084b31592bb1be2104de9ecb5e695c533d50f110225171",
+      "sha256": "3ee1119f07d27c2032aadc93e4eb46d628971ec6df748b42846b09a1b6018348",
       "imports": [],
       "declarations": []
     },
@@ -1043,8 +1043,8 @@
     ]
   },
   "source_roots": {
-    "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
+    "base": "e1f90dfdc5d4971f25ee671dbe655fb19f6722537d4a425bc41939d65841ed9f",
     "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "e82dede61b51d1e2e22ef75f21b093152cb32210ac519142c3ba89df0ff61d3f"
 }

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from itertools import product
 import logging
+from pathlib import Path
 
 import pytest
 
@@ -75,6 +76,16 @@ def _normalize(values: tuple[int, ...]) -> tuple[int, ...]:
             classes[value] = len(classes)
         output.append(classes[value])
     return tuple(output)
+
+
+def _same_partition_relation(left: tuple[int, ...], right: tuple[int, ...]) -> bool:
+    if len(left) != len(right):
+        return False
+    return all(
+        (left[first] == left[second]) == (right[first] == right[second])
+        for first in range(len(left))
+        for second in range(len(left))
+    )
 
 
 def test_join_partition_normalizes_common_refinement():
@@ -302,11 +313,26 @@ def test_exhaustive_small_total_maps_match_independent_partition_pullback():
                 tuple(graph),
                 f"small-{source_count}-{ordinal}",
             )
-            expected = tuple(
-                _normalize(tuple(row.partition[index] for index in graph))
+            raw_pullbacks = tuple(
+                tuple(row.partition[index] for index in graph)
                 for row in target_witness.closure
             )
-            assert tuple(row.source_partition for row in receipt.closure_action) == expected
+            expected = tuple(_normalize(raw) for raw in raw_pullbacks)
+            observed = tuple(row.source_partition for row in receipt.closure_action)
+            assert observed == expected
+            assert all(
+                _same_partition_relation(source_partition, raw_pullback)
+                for source_partition, raw_pullback in zip(
+                    observed, raw_pullbacks, strict=True
+                )
+            )
+
+    lean_source = Path("proofs/lean/VeyraRealizationTransport.lean").read_text(
+        encoding="utf-8"
+    )
+    assert "theorem relationOfLabels_pullback" in lean_source
+    assert "theorem normalizedLabels_realize_pullback" in lean_source
+    assert "theorem normalizedLabels_distinction_pullback" in lean_source
 
 
 def test_scope_states_single_arrow_and_explicit_nonclaims():
