@@ -1,0 +1,45 @@
+name: exact-proof-fix-pytest-profile-early
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-pytest-profile-early-v1
+
+permissions:
+  contents: read
+
+jobs:
+  early:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+      - name: Install exact Python tools
+        run: |
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+      - name: Profile one-to-three-percent block
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          python -m pytest -vv --durations=100 -p no:cacheprovider \
+            tests/test_all_depth_family_p1d3_certificate.py \
+            tests/test_all_depth_family_p1d3_counterexamples.py \
+            tests/test_approx_resonance.py \
+            tests/test_axiom_kernel.py \
+            tests/test_balance_ratio.py \
+            tests/test_benchmark_derivations.py \
+            tests/test_benchmark_evidence.py \
+            tests/test_break_locus.py \
+            tests/test_break_locus_formula.py \
+            tests/test_calculus_depth.py \
+            tests/test_category_like.py \
+            tests/test_certificate_fail_closed.py \
+            tests/test_certificate_result_invariants.py
