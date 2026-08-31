@@ -57,6 +57,96 @@ jobs:
           tar --zstd -xf "$la" -C "$lu"
           mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
 
+      - name: Apply proposed deterministic R7-R9 toolchain identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          replacements = {
+              Path("src/core/proof_core_bridge.py"): (
+          '''def _toolchain_identity(command: list[str]) -> str:
+              logger.debug("proof_core_bridge._toolchain_identity entry command=%r", command)
+              proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+              version = (proc.stdout or proc.stderr).strip()
+              match = re.fullmatch(r"Lean \\(version ([^,\\s)]+)(?:,.*)?\\)", version)
+              if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
+                  logger.error("proof_core_bridge._toolchain_identity mismatch rc=%d version=%r", proc.returncode, version)
+                  raise ValueError("pinned-lean-version-mismatch")
+              stat = Path(command[0]).stat()
+              result = f"{version}|path={command[0]}|inode={stat.st_ino}|size={stat.st_size}|mtime={stat.st_mtime_ns}"
+              logger.debug("proof_core_bridge._toolchain_identity exit result=%s", result)
+              return result
+          ''',
+          '''def _toolchain_identity(command: list[str]) -> str:
+              logger.debug("proof_core_bridge._toolchain_identity entry command=%r", command)
+              proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+              version = (proc.stdout or proc.stderr).strip()
+              match = re.fullmatch(r"Lean \\(version ([^,\\s)]+)(?:,.*)?\\)", version)
+              if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
+                  logger.error("proof_core_bridge._toolchain_identity mismatch rc=%d version=%r", proc.returncode, version)
+                  raise ValueError("pinned-lean-version-mismatch")
+              resolved = subprocess.run(
+                  [command[0], "which", "lean"], cwd=PROJECT_ROOT,
+                  text=True, capture_output=True, check=False,
+              )
+              lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
+              if resolved.returncode or not lean_path.is_file():
+                  raise ValueError("pinned-lean-binary-unavailable")
+              lean_bytes = lean_path.read_bytes()
+              result = (
+                  f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
+                  f"sha256={_sha(lean_bytes)}|size={len(lean_bytes)}"
+              )
+              logger.debug("proof_core_bridge._toolchain_identity exit result=%s", result)
+              return result
+          '''),
+              Path("src/core/intrinsic_mode_bridge.py"): (
+          '''def _toolchain_identity(command: list[str]) -> str:
+              logger.debug("intrinsic_mode_bridge._toolchain_identity entry")
+              proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+              version = (proc.stdout or proc.stderr).strip()
+              match = re.fullmatch(r"Lean \\(version ([^,\\s)]+)(?:,.*)?\\)", version)
+              if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
+                  logger.error("intrinsic_mode_bridge toolchain mismatch version=%r", version)
+                  raise ValueError("r9-pinned-lean-version-mismatch")
+              stat = Path(command[0]).stat()
+              result = f"{version}|path={command[0]}|inode={stat.st_ino}|size={stat.st_size}|mtime={stat.st_mtime_ns}"
+              logger.debug("intrinsic_mode_bridge._toolchain_identity exit result=%s", result)
+              return result
+          ''',
+          '''def _toolchain_identity(command: list[str]) -> str:
+              logger.debug("intrinsic_mode_bridge._toolchain_identity entry")
+              proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+              version = (proc.stdout or proc.stderr).strip()
+              match = re.fullmatch(r"Lean \\(version ([^,\\s)]+)(?:,.*)?\\)", version)
+              if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
+                  logger.error("intrinsic_mode_bridge toolchain mismatch version=%r", version)
+                  raise ValueError("r9-pinned-lean-version-mismatch")
+              resolved = subprocess.run(
+                  [command[0], "which", "lean"], cwd=PROJECT_ROOT,
+                  text=True, capture_output=True, check=False,
+              )
+              lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
+              if resolved.returncode or not lean_path.is_file():
+                  raise ValueError("r9-pinned-lean-binary-unavailable")
+              lean_bytes = lean_path.read_bytes()
+              result = (
+                  f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
+                  f"sha256={_sha(lean_bytes)}|size={len(lean_bytes)}"
+              )
+              logger.debug("intrinsic_mode_bridge._toolchain_identity exit result=%s", result)
+              return result
+          '''),
+          }
+          for path, (old, new) in replacements.items():
+              text = path.read_text()
+              if old not in text:
+                  raise SystemExit(f"identity-block-not-found:{path}")
+              path.write_text(text.replace(old, new))
+          PY
+
       - name: Renew only R9 in working tree
         shell: bash
         run: |
