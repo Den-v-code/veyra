@@ -60,6 +60,9 @@ jobs:
               print(f"BOUNDARY {pct}% index={idx+1}/{len(nodes)} node={nodes[idx]}")
           counts=Counter(node.split("::",1)[0] for node in nodes)
           running=0
+          print("AROUND_10_PERCENT")
+          for idx in range(424, 441):
+              print(f"NODE {idx+1}/{len(nodes)} {nodes[idx]}")
           print("FILE_RANGES")
           for path,count in counts.items():
               start=running+1; running+=count
