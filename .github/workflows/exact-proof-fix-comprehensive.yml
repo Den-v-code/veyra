@@ -19,13 +19,13 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 180
     env:
-      TARGET_SHA: 52d49e0f5af7b73e217216f23c80d1f2b8476e2c
+      TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
     steps:
       - name: Checkout exact clean fix tree
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           repository: Den-v-code/veyra
-          ref: 52d49e0f5af7b73e217216f23c80d1f2b8476e2c
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
           persist-credentials: false
 
       - name: Attest exact clean checkout
