@@ -35,17 +35,25 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
-          import subprocess
           from collections import Counter
-          p=subprocess.run(
-              ["python","-m","pytest","--collect-only","-q","-p","no:cacheprovider"],
-              text=True,capture_output=True,check=False,
+          import pytest
+
+          class Collector:
+              def __init__(self):
+                  self.nodes=[]
+              def pytest_collection_finish(self, session):
+                  self.nodes=[item.nodeid for item in session.items]
+
+          collector=Collector()
+          rc=pytest.main(
+              ["--collect-only","-q","-p","no:cacheprovider"],
+              plugins=[collector],
           )
-          print(p.stderr)
-          if p.returncode:
-              print(p.stdout)
-              raise SystemExit(p.returncode)
-          nodes=[line.strip() for line in p.stdout.splitlines() if "::" in line and not line.startswith("=")]
+          if rc not in (0,5):
+              raise SystemExit(rc)
+          nodes=collector.nodes
+          if not nodes:
+              raise SystemExit("no-collected-nodes")
           print("COLLECTED_NODES",len(nodes))
           for pct in (1,3,5,7,9,10,11,12,15,20,25,50,75,100):
               idx=max(0,min(len(nodes)-1,(len(nodes)*pct+99)//100-1))
