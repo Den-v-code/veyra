@@ -1,0 +1,59 @@
+name: exact-proof-fix-pytest-map
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-pytest-map-v1
+
+permissions:
+  contents: read
+
+jobs:
+  map:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Map pytest progress boundaries
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import subprocess
+          from collections import Counter
+          p=subprocess.run(
+              ["python","-m","pytest","--collect-only","-q","-p","no:cacheprovider"],
+              text=True,capture_output=True,check=False,
+          )
+          print(p.stderr)
+          if p.returncode:
+              print(p.stdout)
+              raise SystemExit(p.returncode)
+          nodes=[line.strip() for line in p.stdout.splitlines() if "::" in line and not line.startswith("=")]
+          print("COLLECTED_NODES",len(nodes))
+          for pct in (1,3,5,7,9,10,11,12,15,20,25,50,75,100):
+              idx=max(0,min(len(nodes)-1,(len(nodes)*pct+99)//100-1))
+              print(f"BOUNDARY {pct}% index={idx+1}/{len(nodes)} node={nodes[idx]}")
+          counts=Counter(node.split("::",1)[0] for node in nodes)
+          running=0
+          print("FILE_RANGES")
+          for path,count in counts.items():
+              start=running+1; running+=count
+              print(f"{start:05d}-{running:05d} count={count:4d} {path}")
+          PY
