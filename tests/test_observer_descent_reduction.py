@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+import re
 
 import pytest
 
@@ -122,6 +123,58 @@ def _assert_unary_label_definition(
         assert f"| {pattern} => {label}" in block
 
 
+def _canonical_equality_labels(values: tuple[object, ...]) -> tuple[int, ...]:
+    representatives: list[object] = []
+    labels: list[int] = []
+    for value in values:
+        for label, representative in enumerate(representatives):
+            if value == representative:
+                labels.append(label)
+                break
+        else:
+            labels.append(len(representatives))
+            representatives.append(value)
+    return tuple(labels)
+
+
+def _lean_z4_labels(
+    lean_source: str,
+    ctor: str,
+    state_count: int,
+) -> tuple[int, ...]:
+    block = _lean_def_block(lean_source, "z4Labels")
+    wildcard = re.search(
+        rf"^\s*\|\s+\.{re.escape(ctor)},\s+_\s+=>\s+(\d+)\s*$",
+        block,
+        re.MULTILINE,
+    )
+    if wildcard is not None:
+        return (int(wildcard.group(1)),) * state_count
+
+    labels: list[int] = []
+    for state in range(state_count):
+        match = re.search(
+            rf"^\s*\|\s+\.{re.escape(ctor)},\s+\.s{state}\s+=>\s+(\d+)\s*$",
+            block,
+            re.MULTILINE,
+        )
+        assert match is not None, f"missing-z4-label:{ctor}:s{state}"
+        labels.append(int(match.group(1)))
+    return tuple(labels)
+
+
+def _assert_same_equality_partition(
+    left: tuple[int, ...],
+    right: tuple[int, ...],
+) -> None:
+    assert len(left) == len(right)
+    for first in range(len(left)):
+        for second in range(len(left)):
+            assert (left[first] == left[second]) == (
+                right[first] == right[second]
+            )
+
+
 def test_internal_join_semilattice_does_not_make_descent_total():
     _, doctrine, raw_ambient_join, target_doctrine, identity = (
         _five_state_partiality_fixture()
@@ -201,16 +254,16 @@ def test_research_lean_z4_and_partiality_models_match_executable_fixtures():
         "threshold": "threshold",
         "phase-pair": "phasePair",
     }
-    z4_labels_block = _lean_def_block(lean_source, "z4Labels")
     for observer in doctrine.observers:
         responses = observer_response_map(observer)
-        labels = tuple(responses[state] for state in z4_states)
-        ctor = observer_ctors[observer.name]
-        if len(set(labels)) == 1:
-            assert f"| .{ctor}, _ => {labels[0]}" in z4_labels_block
-        else:
-            for state, label in enumerate(labels):
-                assert f"| .{ctor}, .s{state} => {label}" in z4_labels_block
+        raw_responses = tuple(responses[state] for state in z4_states)
+        python_labels = _canonical_equality_labels(raw_responses)
+        lean_labels = _lean_z4_labels(
+            lean_source,
+            observer_ctors[observer.name],
+            len(z4_states),
+        )
+        _assert_same_equality_partition(python_labels, lean_labels)
 
     shift_block = _lean_def_block(lean_source, "z4ShiftApply")
     assert "| .k0, state => state" in shift_block
