@@ -1,0 +1,278 @@
+name: materialize-proof-renewal
+
+on:
+  push:
+    branches:
+      - workbench/current-tree-proof-renewal-materialized-v1
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: workbench/current-tree-proof-renewal-materialized-v1
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact elan and Lean
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version
+
+      - name: Materialize checked renewal outputs
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+
+          root=Path.cwd()
+
+          def replace_constant(path: Path, name: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'({re.escape(name)}\s*=\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"constant:{path}:{name}:{n}")
+              path.write_text(text)
+
+          def replace_dict_digest(path: Path, key: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'("{re.escape(key)}":\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"dict:{path}:{key}:{n}")
+              path.write_text(text)
+
+          def replace_tuple_digest(path: Path, key: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'(\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"tuple:{path}:{key}:{n}")
+              path.write_text(text)
+
+          # R9: regenerate from live bytes and the unchanged R7 theorem artifact.
+          from src.core.intrinsic_mode_lean_render import REQUIRED_DIGESTS, render_mode_transport_lean
+          from src.core.proof_core_resonance import intrinsic_resonance_theorem
+          r9_paths={
+            "python_transport":root/"src/core/intrinsic_mode_transport.py",
+            "python_laws":root/"src/core/intrinsic_mode_laws.py",
+            "python_renderer":root/"src/core/intrinsic_mode_lean_render.py",
+            "python_snapshot":root/"src/core/intrinsic_mode_snapshot.py",
+            "python_bridge":root/"src/core/intrinsic_mode_bridge.py",
+            "native_runtime":root/"src/core/native_runtime.py",
+            "intrinsic_arithmetic":root/"src/core/intrinsic_arithmetic.py",
+            "proof_core_types":root/"src/core/proof_core_types.py",
+            "lean_arithmetic":root/"proofs/lean/VeyraNativeArithmetic.lean",
+            "lean_semantics":root/"proofs/lean/VeyraNativeSemantics.lean",
+            "lean_intrinsic_runtime":root/"proofs/lean/VeyraIntrinsicRuntime.lean",
+            "lean_kernel":root/"proofs/lean/VeyraProofKernel.lean",
+            "lean_soundness":root/"proofs/lean/VeyraProofSoundness.lean",
+            "lean_r7_export":root/"proofs/lean/VeyraProofResonance.lean",
+            "lean_transport":root/"proofs/lean/VeyraRecurrenceModeBridge.lean",
+            "lean_export":root/"proofs/lean/VeyraProofModeTransport.lean",
+          }
+          r9_dig={k:sha256(p.read_bytes()).hexdigest() for k,p in r9_paths.items()}
+          r9_export=render_mode_transport_lean(
+              intrinsic_resonance_theorem().artifact.proof_digest,
+              {k:r9_dig[k] for k in REQUIRED_DIGESTS},
+          ).encode()
+          r9_paths["lean_export"].write_bytes(r9_export)
+          r9_dig["lean_export"]=sha256(r9_export).hexdigest()
+          for k,v in r9_dig.items():
+              replace_dict_digest(root/"src/core/intrinsic_mode_manifest.py",k,v)
+          assert r9_dig["lean_export"]=="3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2"
+
+          # R10: canonical export now binds the deterministic renewed R9 report.
+          from src.core.proof_elaboration_canonical import canonical_elaboration_lean
+          r10_export=canonical_elaboration_lean()
+          (root/"proofs/lean/VeyraProofElaboration.lean").write_bytes(r10_export)
+          assert sha256(r10_export).hexdigest()=="5021f2e276b8efc0494a0617cd87613d4d8e3aa292950dbe2e45afb2273ea469"
+
+          objects=root/"src/core/proof_elaboration_objects.py"
+          text=objects.read_text()
+          pattern=(
+              r'("lean_r9_export": \(\n\s*"VeyraProofModeTransport\.olean",\s*)'
+              r'[0-9]+(,\n\s*")[0-9a-f]{64}(",\n\s*\),)'
+          )
+          text,n=re.subn(
+              pattern,
+              lambda m:m.group(1)+"39040"+m.group(2)+
+              "2defd7b982fdba5cab38ac123aa76ddd14bc2da053b6efa1afa057eb7bef2049"+m.group(3),
+              text,
+          )
+          assert n==1,n
+          objects.write_text(text)
+
+          from src.core.proof_elaboration_bridge import SOURCE_PATHS as R10_SOURCE_PATHS
+          r10_dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in R10_SOURCE_PATHS.items()}
+          for k,v in r10_dig.items():
+              replace_dict_digest(root/"src/core/proof_elaboration_manifest.py",k,v)
+          assert r10_dig["lean_r9_export"]==r9_dig["lean_export"]
+          assert r10_dig["lean_export"]==sha256(r10_export).hexdigest()
+
+          # R11: generated export is virtual; bind its digest plus live source bytes.
+          from src.core.observer_core_lean_render import canonical_observer_artifact, canonical_observer_lean
+          from src.core.observer_core_bridge import SOURCE_PATHS as R11_SOURCE_PATHS
+          r10_binding="094719c1fa13a48f4ec00e96837f37367b97a12ccc5d88337cc548e42bb8be8c"
+          r11_generated=canonical_observer_lean(canonical_observer_artifact(),r10_binding)
+          r11_dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in R11_SOURCE_PATHS.items()}
+          r11_dig["lean_export"]=sha256(r11_generated).hexdigest()
+          assert r11_dig["lean_export"]=="aa5b1f20db074ca16acb7245f8e40388160a6e646b27689cbbdc7f6d39a0ddf9"
+          for k,v in r11_dig.items():
+              replace_tuple_digest(root/"src/core/observer_core_manifest.py",k,v)
+
+          # R12.5: reuse checked parent identities, recompute only source/generated digests.
+          from src.core.intrinsic_vam_formal_lean_render import canonical_intrinsic_vam_formal_lean
+          from src.core.intrinsic_vam_formal_effects import intrinsic_vam_formal_effect_digest
+          from src.core.shadow_effects import shadow_effect_registry_digest
+          import src.core.intrinsic_vam_formal_bridge_core as r12core
+          r11_binding="0d0952769cc245e9af4085f7da9e4daa7702969d2ec6705afab0a8c8613d156f"
+          registry=shadow_effect_registry_digest()
+          effect=intrinsic_vam_formal_effect_digest()
+          r12_generated=canonical_intrinsic_vam_formal_lean(r11_binding,registry,effect)
+          r12_dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in r12core.SOURCE_PATHS.items()}
+          r12_dig["lean_export"]=sha256(r12_generated).hexdigest()
+          p=root/"src/core/intrinsic_vam_formal_manifest.py"
+          for k,v in r12_dig.items():
+              replace_tuple_digest(p,k,v)
+          replace_constant(p,"EXPECTED_R11_BINDING",r11_binding)
+          replace_constant(p,"EXPECTED_SNAPSHOT_DIGEST","804675fba89f4369c622f6228402f412323072d5a764899d8ab4a5f93ccc19c5")
+          replace_constant(p,"EXPECTED_BINDING_DIGEST","74e8a450b2ade63de38c90753cda41987324c1cefcb436032fa23780abb4e4dd")
+
+          # R13 finite source/evidence/theorem.
+          replace_constant(
+              root/"src/core/intrinsic_observer_echo_source.py",
+              "EXPECTED_R10_BINDING_DIGEST",
+              "757e504ce4c05a787b2d6dbc77e03df9f77a4006196b176f5f28465e74d2f7e1",
+          )
+          replace_constant(
+              root/"src/core/intrinsic_observer_echo_source.py",
+              "EXPECTED_ARTIFACT_DIGEST",
+              "9e4b760b954c0ce58f636bee917f061391e13b247e4ade15d957e6445b68e4c1",
+          )
+          replace_constant(
+              root/"src/core/intrinsic_observer_echo_evidence.py",
+              "EXPECTED_EVIDENCE_DIGEST",
+              "ff10a23daaab0e2a44eb71dc01f4481fd726e841f926e2eaa6382c09f0748201",
+          )
+          replace_constant(
+              root/"src/core/intrinsic_observer_echo_theorem.py",
+              "EXPECTED_ARTIFACT_DIGEST",
+              "cc91c219e2e3a1cbb24e18024961b5514b8c0f35dd4bb76dadd528002079eb7a",
+          )
+
+          # R13 formal envelope.
+          from src.core.intrinsic_observer_echo_formal_lean_render import canonical_intrinsic_observer_echo_formal_lean
+          import src.core.intrinsic_observer_echo_formal_bridge_core as r13core
+          values=(
+              "9e4b760b954c0ce58f636bee917f061391e13b247e4ade15d957e6445b68e4c1",
+              "757e504ce4c05a787b2d6dbc77e03df9f77a4006196b176f5f28465e74d2f7e1",
+              "0d0952769cc245e9af4085f7da9e4daa7702969d2ec6705afab0a8c8613d156f",
+              "74e8a450b2ade63de38c90753cda41987324c1cefcb436032fa23780abb4e4dd",
+              "ff10a23daaab0e2a44eb71dc01f4481fd726e841f926e2eaa6382c09f0748201",
+              "6a62bf002948aa8f8acf30c8c3d01cfc5f1a3a87e97dbcdd6bb66e378210be41",
+              "3528f3aa8822bdad720ffdb557f00491ae7466831130f6f966ffa09a33cf54f8",
+          )
+          r13_generated=canonical_intrinsic_observer_echo_formal_lean(*values)
+          r13_dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in r13core.SOURCE_PATHS.items()}
+          r13_dig["lean_export"]=sha256(r13_generated).hexdigest()
+          p=root/"src/core/intrinsic_observer_echo_formal_manifest.py"
+          for k,v in r13_dig.items():
+              replace_tuple_digest(p,k,v)
+          for name,value in {
+              "EXPECTED_PHASE_ARTIFACT":values[0],
+              "EXPECTED_SOURCE_ELABORATION_BINDING":values[1],
+              "EXPECTED_R11_BINDING":values[2],
+              "EXPECTED_R12_BINDING":values[3],
+              "EXPECTED_SNAPSHOT_DIGEST":"b5ad0884a0c01dc7d6252cd24b52e6e0fa9b69d79b2de53d7417981d9fb20bdb",
+              "EXPECTED_BINDING_DIGEST":"3c8aeeef1511f7ce591e61d762a3a45ac7adfb41948f8047cafaa228f815422f",
+          }.items():
+              replace_constant(p,name,value)
+
+          replace_constant(
+              root/"src/core/layer_theorem_contract_handlers.py",
+              "R13_TRUSTED_CONTRACT_DIGEST",
+              "ca8d028acc39c526d22df5ba17848d062a7f2912f793ac68528e46659feb5fcd",
+          )
+
+          # Research source-continuity manifest follows the two regenerated base files.
+          p=root/"experimental/research_lean/manifest.json"
+          text=p.read_text()
+          for path,digest in {
+              "proofs/lean/VeyraProofModeTransport.lean":r9_dig["lean_export"],
+              "proofs/lean/VeyraProofElaboration.lean":sha256(r10_export).hexdigest(),
+          }.items():
+              pattern=rf'("path": "{re.escape(path)}",\n\s+"sha256": ")[0-9a-f]{{64}}(")'
+              text,n=re.subn(pattern,rf'\g<1>{digest}\2',text)
+              assert n==1,(path,n)
+          p.write_text(text)
+          PY
+
+      - name: Commit materialized renewal
+        run: |
+          set -euo pipefail
+          git diff --check
+          git status --short
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/core/intrinsic_mode_manifest.py \
+            proofs/lean/VeyraProofModeTransport.lean \
+            src/core/proof_elaboration_objects.py \
+            src/core/proof_elaboration_manifest.py \
+            proofs/lean/VeyraProofElaboration.lean \
+            src/core/observer_core_manifest.py \
+            src/core/intrinsic_vam_formal_manifest.py \
+            src/core/intrinsic_observer_echo_source.py \
+            src/core/intrinsic_observer_echo_evidence.py \
+            src/core/intrinsic_observer_echo_theorem.py \
+            src/core/intrinsic_observer_echo_formal_manifest.py \
+            src/core/layer_theorem_contract_handlers.py \
+            experimental/research_lean/manifest.json
+          git commit -m "chore(proofs): materialize checked R9-R13 renewal [skip ci]"
+          git push origin HEAD:workbench/current-tree-proof-renewal-materialized-v1
