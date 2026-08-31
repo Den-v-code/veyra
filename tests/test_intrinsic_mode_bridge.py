@@ -1,6 +1,7 @@
 from dataclasses import replace
 from hashlib import sha256
-from types import MappingProxyType
+from pathlib import Path
+from types import MappingProxyType, SimpleNamespace
 
 import pytest
 
@@ -88,6 +89,30 @@ def test_poisoned_cached_report_is_independently_rehashed(monkeypatch):
     report = bridge_module.intrinsic_mode_bridge_report()
     assert report.status == "blocked"
     assert report.diagnostics == "cached-r9-bridge-integrity-mismatch"
+
+
+def test_r9_toolchain_identity_is_content_bound_not_launcher_metadata(tmp_path, monkeypatch):
+    lean = tmp_path / "lean"
+    lean.write_bytes(b"reviewed-lean-binary")
+    version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
+
+    def run(command, **_kwargs):
+        if command[-1] == "--version":
+            return SimpleNamespace(returncode=0, stdout=version, stderr="")
+        if command[1:] == ["which", "lean"]:
+            return SimpleNamespace(returncode=0, stdout=str(lean) + "\n", stderr="")
+        raise AssertionError(command)
+
+    monkeypatch.setattr(bridge_module.subprocess, "run", run)
+    first = bridge_module._toolchain_identity(
+        ["/runner-a/elan", "run", bridge_module.LEAN_TOOLCHAIN, "lean"]
+    )
+    second = bridge_module._toolchain_identity(
+        ["/runner-b/elan", "run", bridge_module.LEAN_TOOLCHAIN, "lean"]
+    )
+    assert first == second
+    assert "sha256=" in first and "binary=lean" in first
+    assert "path=" not in first and "inode=" not in first and "mtime=" not in first
 
 
 def test_toolchain_and_boundary_are_exact_not_generic_claims():

@@ -93,8 +93,18 @@ def _toolchain_identity(command: list[str]) -> str:
     if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
         logger.error("proof_core_bridge._toolchain_identity mismatch rc=%d version=%r", proc.returncode, version)
         raise ValueError("pinned-lean-version-mismatch")
-    stat = Path(command[0]).stat()
-    result = f"{version}|path={command[0]}|inode={stat.st_ino}|size={stat.st_size}|mtime={stat.st_mtime_ns}"
+    resolved = subprocess.run(
+        [command[0], "which", "lean"], cwd=PROJECT_ROOT,
+        text=True, capture_output=True, check=False,
+    )
+    lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
+    if resolved.returncode or not lean_path.is_file():
+        raise ValueError("pinned-lean-binary-unavailable")
+    lean_bytes = lean_path.read_bytes()
+    result = (
+        f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
+        f"sha256={_sha(lean_bytes)}|size={len(lean_bytes)}"
+    )
     logger.debug("proof_core_bridge._toolchain_identity exit result=%s", result)
     return result
 
