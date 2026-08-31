@@ -165,7 +165,14 @@ jobs:
               r'("lean_r9_export": \(\n\s*"VeyraProofModeTransport\.olean",\s*)'
               r'[0-9]+(,\n\s*")[0-9a-f]{64}(",\n\s*\),)'
           )
-          text,n=re.subn(pattern,rf'\g<1>{size}\2{digest}\3',text)
+          print("DERIVED_R10_OBJECT",filename,size,digest)
+          text,n=re.subn(
+              pattern,
+              lambda match: (
+                  match.group(1)+str(size)+match.group(2)+digest+match.group(3)
+              ),
+              text,
+          )
           assert n==1,n
           p.write_text(text)
           print("RENEW_R10_OBJECT",filename,size,digest)
