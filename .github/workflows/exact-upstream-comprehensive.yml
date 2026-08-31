@@ -73,21 +73,64 @@ jobs:
           python -m pip install --only-binary=:all: cryptography==50.0.0
           python -m pip install --no-build-isolation --no-deps -e .
 
-      - name: Install exact Lean archive
+      - name: Install exact elan and content-bound Lean toolchain
         shell: bash -el {0}
         env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
           LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
           LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
         run: |
           set -euo pipefail
-          archive="$RUNNER_TEMP/lean-4.30.0-rc2-linux.tar.zst"
-          curl --proto '=https' --tlsv1.2 --fail --location --retry 3             --progress-bar --output "$archive" "$LEAN_ARCHIVE_URL"
-          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
-          tar --zstd -xf "$archive" -C "$RUNNER_TEMP"
-          lean_root="$RUNNER_TEMP/lean-4.30.0-rc2-linux"
+
+          elan_archive="$RUNNER_TEMP/elan-x86_64-unknown-linux-gnu.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+            --progress-bar --output "$elan_archive" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$elan_archive" | sha256sum --check --strict
+          elan_unpack="$RUNNER_TEMP/elan-4.2.1"
+          mkdir -p "$elan_unpack" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$elan_archive" -C "$elan_unpack"
+          elan_init="$(find "$elan_unpack" -type f -name elan-init -print -quit)"
+          test -n "$elan_init"
+          install -m 0755 "$elan_init" "$HOME/.elan/bin/elan"
+          printf '%s\n' "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" --version | grep -F 'elan 4.2.1'
+
+          lean_archive="$RUNNER_TEMP/lean-4.30.0-rc2-linux.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 \
+            --progress-bar --output "$lean_archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$lean_archive" | sha256sum --check --strict
+          lean_unpack="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lean_unpack"
+          tar --zstd -xf "$lean_archive" -C "$lean_unpack"
+          lean_root="$lean_unpack/lean-4.30.0-rc2-linux"
           test -x "$lean_root/bin/lean"
-          printf '%s\n' "$lean_root/bin" >> "$GITHUB_PATH"
-          "$lean_root/bin/lean" --version
+
+          toolchain_root="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          test ! -e "$toolchain_root"
+          mv "$lean_root" "$toolchain_root"
+
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version \
+            | grep -F 'Lean (version 4.30.0-rc2'
+          "$toolchain_root/bin/lean" --version | grep -F 'Lean (version 4.30.0-rc2'
+
+      - name: Attest Veyra hardened Lean routes
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          test "$(command -v elan)" = "$HOME/.elan/bin/elan"
+          python - <<'PY'
+          from src.core.proof_elaboration_toolchain import LEAN_BINARY, TOOLCHAIN_ROOT
+          expected_root = (
+              __import__("pathlib").Path.home()
+              / ".elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          )
+          assert TOOLCHAIN_ROOT == expected_root, (TOOLCHAIN_ROOT, expected_root)
+          assert LEAN_BINARY == expected_root / "bin/lean"
+          assert LEAN_BINARY.is_file(), LEAN_BINARY
+          print("[attest] veyra-toolchain-root=" + str(TOOLCHAIN_ROOT))
+          PY
+          elan run leanprover/lean4:v4.30.0-rc2 lean --version
 
       - name: Install reproduced Rust toolchain
         shell: bash -el {0}
