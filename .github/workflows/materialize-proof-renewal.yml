@@ -126,6 +126,50 @@ jobs:
           for k,v in r9_dig.items():
               replace_dict_digest(root/"src/core/intrinsic_mode_manifest.py",k,v)
           assert r9_dig["lean_export"]=="3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2"
+          PY
+
+      - name: Materialize R10-R13 checked renewal outputs
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+
+          root=Path.cwd()
+
+          def replace_constant(path: Path, name: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'({re.escape(name)}\\s*=\\s*")[0-9a-f]{{64}}(")',
+                  rf'\\g<1>{value}\\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"constant:{path}:{name}:{n}")
+              path.write_text(text)
+
+          def replace_dict_digest(path: Path, key: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'("{re.escape(key)}":\\s*")[0-9a-f]{{64}}(")',
+                  rf'\\g<1>{value}\\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"dict:{path}:{key}:{n}")
+              path.write_text(text)
+
+          def replace_tuple_digest(path: Path, key: str, value: str) -> None:
+              text=path.read_text()
+              text,n=re.subn(
+                  rf'(\\("{re.escape(key)}",\\s*")[0-9a-f]{{64}}(")',
+                  rf'\\g<1>{value}\\2',
+                  text,
+              )
+              if n != 1:
+                  raise SystemExit(f"tuple:{path}:{key}:{n}")
+              path.write_text(text)
 
           # R10: canonical export now binds the deterministic renewed R9 report.
           from src.core.proof_elaboration_canonical import canonical_elaboration_lean
