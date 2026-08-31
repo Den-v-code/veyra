@@ -55,6 +55,7 @@ jobs:
           mkdir -p "$lu"
           tar --zstd -xf "$la" -C "$lu"
           mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          echo "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin" >> "$GITHUB_PATH"
           "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version | grep -F 'Lean (version 4.30.0-rc2'
 
       - name: Focused reproducibility regressions
