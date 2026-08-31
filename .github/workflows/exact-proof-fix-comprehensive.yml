@@ -1,4 +1,5 @@
 name: exact-proof-fix-comprehensive
+# Verifies the immutable clean candidate SHA, not this harness commit.
 
 on:
   push:
