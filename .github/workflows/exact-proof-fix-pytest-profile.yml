@@ -1,0 +1,43 @@
+name: exact-proof-fix-pytest-profile
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-pytest-profile-v1
+
+permissions:
+  contents: read
+
+jobs:
+  chunk10:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+      - name: Install exact Python tools
+        run: |
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+      - name: Profile post-10-percent block
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          python -m pytest -vv --durations=100 -p no:cacheprovider \
+            tests/test_core_vam_semantic_parity.py \
+            tests/test_counterexamples.py \
+            tests/test_curriculum_map.py \
+            tests/test_cyclic_probability_stats.py \
+            tests/test_cyclic_weave.py \
+            tests/test_deduction_chain.py \
+            tests/test_depth_packs.py \
+            tests/test_doctrinal_induction.py \
+            tests/test_equation.py \
+            tests/test_essence_core.py \
+            tests/test_finite_builder_package_compat.py
