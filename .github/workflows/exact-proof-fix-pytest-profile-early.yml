@@ -1,4 +1,5 @@
 name: exact-proof-fix-pytest-profile-early
+# Immutable target profiling harness.
 
 on:
   push:
