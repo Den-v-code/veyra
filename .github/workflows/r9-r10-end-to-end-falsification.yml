@@ -1,0 +1,130 @@
+name: r9-r10-end-to-end-falsification
+
+on:
+  push:
+    branches:
+      - verify/r9-toolchain-identity-falsification-v1
+
+permissions:
+  contents: read
+
+jobs:
+  staged:
+    name: Staged R9-R10 lane ${{ matrix.lane }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [a, b]
+    steps:
+      - name: Checkout exact upstream
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Justsomebuddy/veyra
+          ref: c6287a513ac82092de61f23ac792d3c0e5177dd4
+          persist-credentials: false
+
+      - name: Setup exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+          cache: ""
+
+      - name: Install exact elan and Lean
+        shell: bash
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          ei="$(find "$eu" -type f -name elan-init -print -quit)"
+          install -m 0755 "$ei" "$HOME/.elan/bin/elan"
+          printf '%s\n' "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+
+      - name: Renew only R9 in working tree and inspect R10
+        shell: bash
+        env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os, re
+
+          root = Path.cwd()
+          from src.core.intrinsic_mode_lean_render import REQUIRED_DIGESTS, render_mode_transport_lean
+          from src.core.proof_core_resonance import intrinsic_resonance_theorem
+
+          paths = {
+              "python_transport": root / "src/core/intrinsic_mode_transport.py",
+              "python_laws": root / "src/core/intrinsic_mode_laws.py",
+              "python_renderer": root / "src/core/intrinsic_mode_lean_render.py",
+              "python_snapshot": root / "src/core/intrinsic_mode_snapshot.py",
+              "python_bridge": root / "src/core/intrinsic_mode_bridge.py",
+              "native_runtime": root / "src/core/native_runtime.py",
+              "intrinsic_arithmetic": root / "src/core/intrinsic_arithmetic.py",
+              "proof_core_types": root / "src/core/proof_core_types.py",
+              "lean_arithmetic": root / "proofs/lean/VeyraNativeArithmetic.lean",
+              "lean_semantics": root / "proofs/lean/VeyraNativeSemantics.lean",
+              "lean_intrinsic_runtime": root / "proofs/lean/VeyraIntrinsicRuntime.lean",
+              "lean_kernel": root / "proofs/lean/VeyraProofKernel.lean",
+              "lean_soundness": root / "proofs/lean/VeyraProofSoundness.lean",
+              "lean_r7_export": root / "proofs/lean/VeyraProofResonance.lean",
+              "lean_transport": root / "proofs/lean/VeyraRecurrenceModeBridge.lean",
+              "lean_export": root / "proofs/lean/VeyraProofModeTransport.lean",
+          }
+          digests = {name: sha256(path.read_bytes()).hexdigest() for name, path in paths.items()}
+          render_digests = {name: digests[name] for name in REQUIRED_DIGESTS}
+          export = render_mode_transport_lean(
+              intrinsic_resonance_theorem().artifact.proof_digest,
+              render_digests,
+          ).encode()
+          paths["lean_export"].write_bytes(export)
+          digests["lean_export"] = sha256(export).hexdigest()
+
+          manifest = root / "src/core/intrinsic_mode_manifest.py"
+          text = manifest.read_text()
+          for name, digest in digests.items():
+              text, count = re.subn(
+                  rf'("{re.escape(name)}":\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{digest}\2',
+                  text,
+              )
+              if count != 1:
+                  raise SystemExit(f"manifest-row:{name}:{count}")
+          manifest.write_text(text)
+
+          from src.core.intrinsic_mode_bridge import check_intrinsic_mode_bridge
+          report = check_intrinsic_mode_bridge()
+          print(f"R9_STATUS lane={os.environ['LANE']} {report.status}")
+          print(f"R9_BINDING lane={os.environ['LANE']} {report.binding_digest}")
+          print(f"R9_TOOLCHAIN lane={os.environ['LANE']} {report.toolchain}")
+          if report.status != "checked":
+              raise SystemExit(report.diagnostics)
+
+          from src.core.proof_elaboration_canonical import canonical_elaboration_lean
+          generated = canonical_elaboration_lean()
+          checked = (root / "proofs/lean/VeyraProofElaboration.lean").read_bytes()
+          print(f"R10_GENERATED_SHA lane={os.environ['LANE']} {sha256(generated).hexdigest()}")
+          print(f"R10_CHECKED_SHA lane={os.environ['LANE']} {sha256(checked).hexdigest()}")
+          match = re.search(rb'def r9BindingDigest : String := "([0-9a-f]{64})"', generated)
+          print(f"R10_EMBEDDED_R9 lane={os.environ['LANE']} {match.group(1).decode() if match else 'missing'}")
+          print(f"R10_MATCH lane={os.environ['LANE']} {generated == checked}")
+          PY
