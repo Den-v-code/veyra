@@ -54,7 +54,11 @@ jobs:
 
       - name: Focused identity regressions
         run: |
-          pytest -q             tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_launcher_metadata             tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_launcher_metadata             tests/test_observer_core_bridge.py::test_r11_toolchain_identity_excludes_host_local_metadata
+          pytest -q \
+            tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_launcher_metadata \
+            tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_launcher_metadata \
+            tests/test_proof_elaboration_bridge.py::test_r10_toolchain_identity_excludes_host_local_metadata \
+            tests/test_observer_core_bridge.py::test_r11_toolchain_identity_excludes_host_local_metadata
 
       - name: Renew R9 source manifest and generated export
         run: |
@@ -105,23 +109,82 @@ jobs:
           assert r.status=="checked",r.diagnostics
           PY
 
-      - name: Renew R10 generated export and manifest
+      - name: Renew R10 generated export
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from src.core.proof_elaboration_canonical import canonical_elaboration_lean
+          export=canonical_elaboration_lean()
+          Path("proofs/lean/VeyraProofElaboration.lean").write_bytes(export)
+          print("RENEW_R10_EXPORT",sha256(export).hexdigest())
+          PY
+
+      - name: Derive changed R10 Lean object record
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os, re, subprocess
+          from tempfile import TemporaryDirectory
+
+          import src.core.proof_elaboration_bridge_io as io
+          from src.core.proof_elaboration_snapshot import SNAPSHOT_NAMES
+
+          command=io.lean_command()
+          assert command
+          sources={name:Path("proofs/lean",filename).read_bytes() for name,filename in SNAPSHOT_NAMES.items()}
+          with TemporaryDirectory(prefix="r10-object-renew-") as tmp:
+              root=Path(tmp)
+              prior=[]
+              derived=None
+              for index,(name,filename) in enumerate(SNAPSHOT_NAMES.items(),1):
+                  if index>8:
+                      break
+                  source=Path("proofs/lean",filename).resolve()
+                  stage=root/f"{index:02d}-{source.stem}"
+                  stage.mkdir()
+                  output=stage/f"{source.stem}.olean"
+                  env=io._clean_env(tuple(path.parent for _,path in prior))
+                  proc=subprocess.run(
+                      command+["-R",str(Path("proofs/lean").resolve()),"-o",str(output),str(source)],
+                      cwd=Path("proofs/lean").resolve(),env=env,text=True,capture_output=True,check=False,
+                  )
+                  assert proc.returncode==0,(name,proc.stderr,proc.stdout)
+                  if index<8:
+                      io._validate_fresh_object(root,name,output)
+                      prior.append((name,output))
+                  else:
+                      data=output.read_bytes()
+                      derived=(output.name,len(data),sha256(data).hexdigest())
+              assert derived is not None
+          p=Path("src/core/proof_elaboration_objects.py")
+          text=p.read_text()
+          filename,size,digest=derived
+          pattern=(
+              r'("lean_r9_export": \(\n\s*"VeyraProofModeTransport\.olean",\s*)'
+              r'[0-9]+(,\n\s*")[0-9a-f]{64}(",\n\s*\),)'
+          )
+          text,n=re.subn(pattern,rf'\g<1>{size}\2{digest}\3',text)
+          assert n==1,n
+          p.write_text(text)
+          print("RENEW_R10_OBJECT",filename,size,digest)
+          PY
+
+      - name: Renew R10 source manifest
         run: |
           python - <<'PY'
           from hashlib import sha256
           from pathlib import Path
           import re
-          from src.core.proof_elaboration_canonical import canonical_elaboration_lean
-          root=Path.cwd(); export=canonical_elaboration_lean()
-          (root/"proofs/lean/VeyraProofElaboration.lean").write_bytes(export)
           from src.core.proof_elaboration_bridge import SOURCE_PATHS
           dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in SOURCE_PATHS.items()}
-          p=root/"src/core/proof_elaboration_manifest.py"; text=p.read_text()
+          p=Path("src/core/proof_elaboration_manifest.py"); text=p.read_text()
           for k,v in dig.items():
             text,n=re.subn(rf'("{re.escape(k)}":\s*")[0-9a-f]{{64}}(")',rf'\g<1>{v}\2',text)
             assert n==1,(k,n)
           p.write_text(text)
-          print("RENEW_R10_EXPORT",sha256(export).hexdigest())
+          print("RENEW_R10_MANIFEST",dig["reviewed_objects"],dig["bridge_io"],dig["lean_r9_export"],dig["lean_export"])
           PY
 
       - name: Replay R10
