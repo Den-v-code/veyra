@@ -414,7 +414,7 @@ jobs:
           PY
 
       - name: Research checker
-        run: python scripts/check_research_lean.py --skip-lean
+        run: python scripts/check_research_lean.py --jobs 8
 
       - name: Show renewal diff
         run: |
