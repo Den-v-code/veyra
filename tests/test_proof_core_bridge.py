@@ -133,6 +133,26 @@ def test_pinned_version_match_is_exact(monkeypatch, version):
         bridge_module._toolchain_identity(["/not-inspected-on-mismatch"])
 
 
+def test_toolchain_identity_is_content_bound_not_launcher_metadata(tmp_path, monkeypatch):
+    lean = tmp_path / "lean"
+    lean.write_bytes(b"reviewed-lean-binary")
+    version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
+
+    def run(command, **_kwargs):
+        if command[-1] == "--version":
+            return SimpleNamespace(returncode=0, stdout=version, stderr="")
+        if command[1:] == ["which", "lean"]:
+            return SimpleNamespace(returncode=0, stdout=str(lean) + "\n", stderr="")
+        raise AssertionError(command)
+
+    monkeypatch.setattr(bridge_module.subprocess, "run", run)
+    first = bridge_module._toolchain_identity(["/runner-a/elan", "run", LEAN_TOOLCHAIN, "lean"])
+    second = bridge_module._toolchain_identity(["/runner-b/elan", "run", LEAN_TOOLCHAIN, "lean"])
+    assert first == second
+    assert "sha256=" in first and "binary=lean" in first
+    assert "path=" not in first and "inode=" not in first and "mtime=" not in first
+
+
 def test_compile_uses_captured_snapshot_after_original_source_mutation(tmp_path, monkeypatch):
     lean_dir = tmp_path / "mutable-originals"
     lean_dir.mkdir()
