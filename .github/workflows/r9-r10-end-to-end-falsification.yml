@@ -57,16 +57,14 @@ jobs:
           tar --zstd -xf "$la" -C "$lu"
           mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
 
-      - name: Renew only R9 in working tree and inspect R10
+      - name: Renew only R9 in working tree
         shell: bash
-        env:
-          LANE: ${{ matrix.lane }}
         run: |
           set -euo pipefail
           python - <<'PY'
           from hashlib import sha256
           from pathlib import Path
-          import os, re
+          import re
 
           root = Path.cwd()
           from src.core.intrinsic_mode_lean_render import REQUIRED_DIGESTS, render_mode_transport_lean
@@ -110,7 +108,21 @@ jobs:
               if count != 1:
                   raise SystemExit(f"manifest-row:{name}:{count}")
           manifest.write_text(text)
+          print("R9_RENEWED_EXPORT_SHA", digests["lean_export"])
+          PY
 
+      - name: Check renewed R9 and inspect generated R10
+        shell: bash
+        env:
+          LANE: ${{ matrix.lane }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os, re
+
+          root = Path.cwd()
           from src.core.intrinsic_mode_bridge import check_intrinsic_mode_bridge
           report = check_intrinsic_mode_bridge()
           print(f"R9_STATUS lane={os.environ['LANE']} {report.status}")
