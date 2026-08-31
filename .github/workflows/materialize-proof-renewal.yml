@@ -163,7 +163,7 @@ jobs:
           def replace_tuple_digest(path: Path, key: str, value: str) -> None:
               text=path.read_text()
               text,n=re.subn(
-                  rf'(\\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'(\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
                   rf'\g<1>{value}\2',
                   text,
               )
