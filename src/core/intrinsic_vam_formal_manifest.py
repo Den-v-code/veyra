@@ -3,9 +3,9 @@ from types import MappingProxyType
 
 TCB_SCHEMA = "veyra-intrinsic-vam-formal-tcb-r12.5-v1"
 BRIDGE_ID = "veyra.lean.r12.5.intrinsic-vam-tcb.v1"
-EXPECTED_R11_BINDING = "79039a32670ea305a70129e80d6299eae0f2428393f2f28018b74ccbdbc8701f"
-EXPECTED_SNAPSHOT_DIGEST = "4f8d887ea3cd4366cbfa26a2447f6738edf51b7997a11619f5d40edb2b1bff6e"
-EXPECTED_BINDING_DIGEST = "201d8ae00224556c45a3a795c58aca025204bcdd8354e08ad05926f16c2ae802"
+EXPECTED_R11_BINDING = "0d0952769cc245e9af4085f7da9e4daa7702969d2ec6705afab0a8c8613d156f"
+EXPECTED_SNAPSHOT_DIGEST = "804675fba89f4369c622f6228402f412323072d5a764899d8ab4a5f93ccc19c5"
+EXPECTED_BINDING_DIGEST = "74e8a450b2ade63de38c90753cda41987324c1cefcb436032fa23780abb4e4dd"
 EXPECTED_TOOLCHAIN_IDENTITY = (
     "Lean (version 4.30.0-rc2, x86_64-unknown-linux-gnu, commit "
     "3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc, Release)|"
@@ -49,7 +49,7 @@ _EXPECTED_R12_5_TCB_DIGEST_ROWS = (
     ("lean_observer_core", "fef5db4a94f40b7ba478c5e9d28c5680f736672d5caaea5ac97a823d3e2359d2"),
     ("lean_observer_proof", "7ef4905cc7923ee0c5d057abbada8c3f6b97c8e181b7d73fba0ad7c21653c1d2"),
     ("lean_intrinsic_vam", "770ab54aed74ed394162e249f034a87ff13609d037432a26d5e4bf0971a37e0d"),
-    ("lean_export", "3665e9af0c76219bf946b3beb01dd872e7534bdbcf26052cf0de4d6d997c2f36"),
+    ("lean_export", "11a90549b613cab1ed9b1f6a46f0a76e0932265fa61d2ee54e393b13af68542b"),
 )
 EXPECTED_R12_5_TCB_DIGESTS = MappingProxyType(dict(_EXPECTED_R12_5_TCB_DIGEST_ROWS))
 

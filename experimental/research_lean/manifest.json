@@ -306,7 +306,7 @@
     },
     {
       "path": "proofs/lean/VeyraProofElaboration.lean",
-      "sha256": "52269d4c9839b7178200e0a8e86acd4df6348302e457745eb86e58439feb265f",
+      "sha256": "5021f2e276b8efc0494a0617cd87613d4d8e3aa292950dbe2e45afb2273ea469",
       "imports": [
         "VeyraElaborationSemantics"
       ],
@@ -322,7 +322,7 @@
     },
     {
       "path": "proofs/lean/VeyraProofModeTransport.lean",
-      "sha256": "d9ac930c119f3126a858bf286bee32f4d5b9a3ac3fe8cb297316d9cc10dbcc26",
+      "sha256": "3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2",
       "imports": [
         "VeyraProofResonance",
         "VeyraRecurrenceModeBridge"
@@ -1043,8 +1043,8 @@
     ]
   },
   "source_roots": {
-    "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
+    "base": "c749683ffd6c6fe66eafa280c263ab23b55872e9ea2b95f64a09df47aa320228",
     "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "cda5dd19e5792b5726d00623fa82988f665882e2524986cd8f4b4946e18d8b9a"
 }
