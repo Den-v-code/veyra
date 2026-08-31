@@ -169,10 +169,15 @@ def p3og_selection_source_closure(
     order = {node.node_id: index for index, node in enumerate(trusted)}
     closure_ids = tuple(sorted(closure, key=order.__getitem__))
     forbidden_ids = tuple(
-        name for name in closure_ids if table[name].kind in _FORBIDDEN
+        node.node_id for node in trusted if node.kind in _FORBIDDEN
     )
     if forbidden_ids:
         raise ValueError("p3og-selection-source-closure-forbidden-dependency")
+    disconnected_ids = tuple(
+        node.node_id for node in trusted if node.node_id not in closure
+    )
+    if disconnected_ids:
+        raise ValueError("p3og-selection-source-closure-disconnected-dependency")
     fields = (
         SOURCE_CLOSURE_VERSION,
         source.source_digest,

@@ -83,6 +83,34 @@ def test_direct_criterion_dependency_is_rejected() -> None:
         p3og_selection_source_closure(source, blind, nodes)
 
 
+def test_disconnected_criterion_dependency_is_rejected() -> None:
+    source = _source()
+    blind = "a" * 64
+    criterion = p3og_selection_dependency_node(
+        "criterion-disconnected",
+        SelectionDependencyKind.DISCRIMINATION_CRITERION,
+        (),
+        "b" * 64,
+    )
+    nodes = (criterion, *_root_nodes(source, blind))
+    with pytest.raises(ValueError, match="forbidden-dependency"):
+        p3og_selection_source_closure(source, blind, nodes)
+
+
+def test_disconnected_innocuous_dependency_is_rejected() -> None:
+    source = _source()
+    blind = "c" * 64
+    transform = p3og_selection_dependency_node(
+        "unused-transform",
+        SelectionDependencyKind.TRANSFORM,
+        (),
+        "d" * 64,
+    )
+    nodes = (transform, *_root_nodes(source, blind))
+    with pytest.raises(ValueError, match="disconnected-dependency"):
+        p3og_selection_source_closure(source, blind, nodes)
+
+
 def test_transitive_hashed_criterion_dependency_is_rejected() -> None:
     source = _source()
     blind = "d" * 64
