@@ -1,0 +1,110 @@
+name: exact-upstream-comprehensive
+
+on:
+  push:
+    branches:
+      - verify/current-upstream-comprehensive-v1
+  workflow_dispatch:
+
+concurrency:
+  group: exact-upstream-comprehensive-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Exact upstream comprehensive verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    env:
+      UPSTREAM_SHA: c6287a513ac82092de61f23ac792d3c0e5177dd4
+    steps:
+      - name: Checkout exact upstream tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: Justsomebuddy/veyra
+          ref: c6287a513ac82092de61f23ac792d3c0e5177dd4
+          persist-credentials: false
+
+      - name: Attest exact clean checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$UPSTREAM_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] upstream_sha=%s clean=yes\n' "$UPSTREAM_SHA"
+
+      - name: Provision CPython 3.11.14 and SageMath 10.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3.2.1
+        with:
+          micromamba-version: "2.9.0-0"
+          environment-name: veyra-full
+          create-args: >-
+            python=3.11.14
+            sage=10.7
+          init-shell: bash
+          cache-environment: true
+          post-cleanup: all
+
+      - name: Verify Python and Sage identities
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          print("[attest] python=" + platform.python_version())
+          PY
+          sage --version
+          sage -python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          import sage.all
+          print("[attest] sage-python=" + platform.python_version())
+          PY
+
+      - name: Install exact reviewed Python verification tools
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact Lean archive
+        shell: bash -el {0}
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean-4.30.0-rc2-linux.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3             --progress-bar --output "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
+          tar --zstd -xf "$archive" -C "$RUNNER_TEMP"
+          lean_root="$RUNNER_TEMP/lean-4.30.0-rc2-linux"
+          test -x "$lean_root/bin/lean"
+          printf '%s\n' "$lean_root/bin" >> "$GITHUB_PATH"
+          "$lean_root/bin/lean" --version
+
+      - name: Install reproduced Rust toolchain
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+          rustc +1.95.0 --version
+
+      - name: Run complete current-tree verification
+        shell: bash -el {0}
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$UPSTREAM_SHA"
+          make verify LEAN_JOBS=8
+          test "$(git rev-parse HEAD)" = "$UPSTREAM_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] upstream_sha=%s comprehensive_verify=pass clean=yes\n' "$UPSTREAM_SHA"
