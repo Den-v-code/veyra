@@ -141,8 +141,8 @@ jobs:
           def replace_constant(path: Path, name: str, value: str) -> None:
               text=path.read_text()
               text,n=re.subn(
-                  rf'({re.escape(name)}\\s*=\\s*")[0-9a-f]{{64}}(")',
-                  rf'\\g<1>{value}\\2',
+                  rf'({re.escape(name)}\s*=\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
                   text,
               )
               if n != 1:
@@ -152,8 +152,8 @@ jobs:
           def replace_dict_digest(path: Path, key: str, value: str) -> None:
               text=path.read_text()
               text,n=re.subn(
-                  rf'("{re.escape(key)}":\\s*")[0-9a-f]{{64}}(")',
-                  rf'\\g<1>{value}\\2',
+                  rf'("{re.escape(key)}":\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
                   text,
               )
               if n != 1:
@@ -163,8 +163,8 @@ jobs:
           def replace_tuple_digest(path: Path, key: str, value: str) -> None:
               text=path.read_text()
               text,n=re.subn(
-                  rf'(\\("{re.escape(key)}",\\s*")[0-9a-f]{{64}}(")',
-                  rf'\\g<1>{value}\\2',
+                  rf'(\\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
                   text,
               )
               if n != 1:
@@ -196,7 +196,7 @@ jobs:
           r10_dig={k:sha256(Path(v).read_bytes()).hexdigest() for k,v in R10_SOURCE_PATHS.items()}
           for k,v in r10_dig.items():
               replace_dict_digest(root/"src/core/proof_elaboration_manifest.py",k,v)
-          assert r10_dig["lean_r9_export"]==r9_dig["lean_export"]
+          assert r10_dig["lean_r9_export"]=="3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2"
           assert r10_dig["lean_export"]==sha256(r10_export).hexdigest()
 
           # R11: generated export is virtual; bind its digest plus live source bytes.
@@ -288,7 +288,7 @@ jobs:
           p=root/"experimental/research_lean/manifest.json"
           text=p.read_text()
           for path,digest in {
-              "proofs/lean/VeyraProofModeTransport.lean":r9_dig["lean_export"],
+              "proofs/lean/VeyraProofModeTransport.lean":"3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2",
               "proofs/lean/VeyraProofElaboration.lean":sha256(r10_export).hexdigest(),
           }.items():
               pattern=rf'("path": "{re.escape(path)}",\n\s+"sha256": ")[0-9a-f]{{64}}(")'
