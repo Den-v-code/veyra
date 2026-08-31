@@ -1,0 +1,60 @@
+name: r9-toolchain-identity-falsification
+
+on:
+  push:
+    branches:
+      - verify/r9-toolchain-identity-falsification-v1
+
+permissions:
+  contents: read
+
+jobs:
+  identity:
+    name: R9 identity lane ${{ matrix.lane }}
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        lane: [a, b]
+    steps:
+      - name: Install exact elan and Lean
+        shell: bash
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          ei="$(find "$eu" -type f -name elan-init -print -quit)"
+          install -m 0755 "$ei" "$HOME/.elan/bin/elan"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+
+      - name: Emit exact R9 toolchain identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          elan="$HOME/.elan/bin/elan"
+          version="$("$elan" run leanprover/lean4:v4.30.0-rc2 lean --version)"
+          inode="$(stat -c '%i' "$elan")"
+          size="$(stat -c '%s' "$elan")"
+          mtime_ns="$(python3 - <<'PY'
+          from pathlib import Path
+          print(Path.home().joinpath('.elan/bin/elan').stat().st_mtime_ns)
+          PY
+          )"
+          printf 'R9_IDENTITY lane=%s %s|path=%s|inode=%s|size=%s|mtime=%s\n' \
+            "${{ matrix.lane }}" "$version" "$elan" "$inode" "$size" "$mtime_ns"
