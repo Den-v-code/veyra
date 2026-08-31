@@ -1,0 +1,145 @@
+name: exact-proof-fix-comprehensive
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-comprehensive-v1
+
+concurrency:
+  group: exact-proof-fix-comprehensive-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Exact proof-fix comprehensive verification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    env:
+      TARGET_SHA: 52d49e0f5af7b73e217216f23c80d1f2b8476e2c
+    steps:
+      - name: Checkout exact clean fix tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 52d49e0f5af7b73e217216f23c80d1f2b8476e2c
+          persist-credentials: false
+
+      - name: Attest exact clean checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] target_sha=%s clean=yes\n' "$TARGET_SHA"
+
+      - name: Provision CPython 3.11.14 and SageMath 10.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39
+        with:
+          micromamba-version: "2.9.0-0"
+          environment-name: veyra-full
+          create-args: >-
+            python=3.11.14
+            sage=10.7
+          init-shell: bash
+          cache-environment: true
+          post-cleanup: all
+
+      - name: Verify Python and Sage identities
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          print("[attest] python=" + platform.python_version())
+          PY
+          sage --version
+          sage -python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          import sage.all
+          print("[attest] sage-python=" + platform.python_version())
+          PY
+
+      - name: Install exact reviewed Python verification tools
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact elan and content-bound Lean toolchain
+        shell: bash -el {0}
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --progress-bar -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          printf '%s\n' "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" --version | grep -F 'elan 4.2.1'
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --progress-bar -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          elan run leanprover/lean4:v4.30.0-rc2 lean --version | grep -F 'Lean (version 4.30.0-rc2'
+
+      - name: Attest Veyra hardened Lean routes
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          test "$(command -v elan)" = "$HOME/.elan/bin/elan"
+          python - <<'PY'
+          from pathlib import Path
+          from src.core.proof_elaboration_toolchain import LEAN_BINARY, TOOLCHAIN_ROOT
+          expected=Path.home()/".elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          assert TOOLCHAIN_ROOT == expected
+          assert LEAN_BINARY == expected/"bin/lean"
+          assert LEAN_BINARY.is_file()
+          print("[attest] direct-lean=" + str(LEAN_BINARY))
+          PY
+
+      - name: Install reproduced Rust toolchain
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+          rustc +1.95.0 --version
+
+      - name: Run complete current-tree verification
+        shell: bash -el {0}
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          make verify LEAN_JOBS=8
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] target_sha=%s make_verify=pass clean=yes\n' "$TARGET_SHA"
+
+      - name: Run research Lean continuity checker
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python scripts/check_research_lean.py --jobs 8
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          printf '[attest] target_sha=%s research_lean=pass clean=yes\n' "$TARGET_SHA"
