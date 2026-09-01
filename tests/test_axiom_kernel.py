@@ -3,12 +3,24 @@ import logging
 
 import pytest
 
-from src.core.axiom_kernel import axiom_kernel_checklist, axiom_kernel_report, axiom_witness_rows, layer_axiom_dependencies, unified_axiom_kernel
+from src.core.axiom_kernel import (
+    AxiomKernelReport,
+    axiom_kernel_checklist,
+    axiom_kernel_report,
+    axiom_witness_rows,
+    unified_axiom_kernel,
+)
 from src.core.layer_theorem_contract_types import TheoremContractCapabilityBlocked
 from src.platform_capabilities import Capability
 
 derivations_module = import_module("src.core.layer_derivations")
 logger = logging.getLogger(__name__)
+
+
+@pytest.fixture(scope="module")
+def ready_axiom_kernel_report() -> AxiomKernelReport:
+    """Replay the unchanged ready F1 graph once for read-only positive assertions."""
+    return axiom_kernel_report()
 
 
 def test_unified_axiom_kernel_has_executable_witnesses():
@@ -21,9 +33,11 @@ def test_unified_axiom_kernel_has_executable_witnesses():
     assert "echo mismatch" in witnesses[-1].obstruction
 
 
-def test_every_core_layer_is_classified_and_only_receipts_name_axioms():
+def test_every_core_layer_is_classified_and_only_receipts_name_axioms(
+    ready_axiom_kernel_report: AxiomKernelReport,
+):
     logger.debug("test axiom layer classification entry")
-    rows = layer_axiom_dependencies()
+    rows = ready_axiom_kernel_report.layers
     assert len(rows) == 36
     assert {row.derivation for row in rows} == {"theorem-derived", "receipt-derived-witness", "shadow", "meta"}
     assert all(row.axioms for row in rows if row.derivation == "receipt-derived-witness")
@@ -33,9 +47,11 @@ def test_every_core_layer_is_classified_and_only_receipts_name_axioms():
     logger.debug("test axiom layer classification exit")
 
 
-def test_axiom_kernel_report_is_ready_and_marks_receipt_boundaries():
+def test_axiom_kernel_report_is_ready_and_marks_receipt_boundaries(
+    ready_axiom_kernel_report: AxiomKernelReport,
+):
     logger.debug("test ready axiom-kernel report entry")
-    report = axiom_kernel_report()
+    report = ready_axiom_kernel_report
     assert report.ready
     assert report.summary()["axioms"] == 8
     assert report.summary()["layers"] == 36
