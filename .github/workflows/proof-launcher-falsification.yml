@@ -1,0 +1,98 @@
+name: proof-launcher-falsification
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-launcher-falsification-v1
+
+permissions:
+  contents: read
+
+jobs:
+  falsify:
+    name: Falsify R7 launcher/execution binding
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact canonical candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+
+      - name: Setup exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+          cache: ""
+
+      - name: Demonstrate identity/execution split
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from types import SimpleNamespace
+          from unittest.mock import patch
+
+          import src.core.proof_core_bridge as bridge
+
+          version = (
+              "Lean (version 4.30.0-rc2, x86_64-unknown-linux-gnu, "
+              "commit 3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc, Release)"
+          )
+
+          with TemporaryDirectory() as td:
+              root = Path(td)
+              reviewed_lean = root / "lean"
+              reviewed_lean.write_bytes(b"reviewed-lean-bytes-never-executed")
+              build = root / "build"
+              compile_calls = []
+
+              def fake_run(command, **_kwargs):
+                  command = list(command)
+                  if command[-1] == "--version":
+                      return SimpleNamespace(returncode=0, stdout=version, stderr="")
+                  if command[1:] == ["which", "lean"]:
+                      return SimpleNamespace(
+                          returncode=0, stdout=str(reviewed_lean) + "\n", stderr=""
+                      )
+                  if "-R" in command:
+                      compile_calls.append(tuple(command))
+                      # Adversarial launcher: claim every compile succeeded while
+                      # never executing Lean and never producing an .olean.
+                      return SimpleNamespace(returncode=0, stdout="", stderr="")
+                  raise AssertionError(f"unexpected-command:{command!r}")
+
+              with (
+                  patch.object(bridge.shutil, "which", return_value="/attacker/elan"),
+                  patch.object(bridge.subprocess, "run", side_effect=fake_run),
+                  patch.object(bridge, "BUILD_DIR", build),
+              ):
+                  report = bridge.check_proof_core_bridge()
+                  verified = bridge.verify_proof_core_bridge_report(report)
+
+              print("FALSIFICATION_STATUS", report.status)
+              print("FALSIFICATION_LEAN_CHECKED", report.lean_checked)
+              print("FALSIFICATION_VERIFIER_ACCEPTED", verified)
+              print("FALSIFICATION_COMPILE_CALLS", len(compile_calls))
+              print("FALSIFICATION_OLEAN_COUNT", len(tuple(build.rglob("*.olean"))))
+              print("FALSIFICATION_TOOLCHAIN", report.toolchain)
+
+              assert len(compile_calls) == 4
+              assert not tuple(build.rglob("*.olean"))
+              assert report.status == "checked"
+              assert report.lean_checked is True
+              assert verified is True
+          PY
+
+      - name: Attest canonical target
+        shell: bash
+        env:
+          TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "ATTEST target=$TARGET_SHA clean=yes"
