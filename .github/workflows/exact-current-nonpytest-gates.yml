@@ -1,0 +1,148 @@
+name: exact-current-nonpytest-gates
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-nonpytest-v1
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Exact non-pytest current-tree gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    env:
+      TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
+
+    steps:
+      - name: Checkout exact clean fix tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+
+      - name: Attest exact checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+      - name: Provision CPython 3.11.14 and SageMath 10.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39
+        with:
+          micromamba-version: "2.9.0-0"
+          environment-name: veyra-full
+          create-args: >-
+            python=3.11.14
+            sage=10.7
+          init-shell: bash
+          cache-environment: true
+          post-cleanup: all
+
+      - name: Verify Python and Sage identities
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          print("ATTEST python=" + platform.python_version())
+          PY
+          sage --version
+          sage -python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          import sage.all
+          print("ATTEST sage-python=" + platform.python_version())
+          PY
+
+      - name: Install exact Python verification tools
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact elan and Lean
+        shell: bash -el {0}
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          echo "$ELAN_ARCHIVE_SHA256  $ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          echo "$LEAN_ARCHIVE_SHA256  $la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          echo "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" --version | grep -F 'elan 4.2.1'
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version | grep -F 'Lean (version 4.30.0-rc2'
+
+      - name: Install exact Rust toolchain
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+          rustc +1.95.0 --version
+
+      - name: Run canonical non-pytest make verify stages
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          stage() {
+            label="$1"
+            shift
+            echo "STAGE_START $label $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            started="$(date +%s)"
+            "$@"
+            stopped="$(date +%s)"
+            echo "STAGE_PASS $label elapsed=$((stopped-started))s $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          }
+
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+
+          stage "1-ruff" make --no-print-directory lint
+          stage "3-certificates" make --no-print-directory cert
+          stage "4-real-sage-smoke" make --no-print-directory sage-required
+          stage "5-sage-doctest" make --no-print-directory sage-doctest
+          stage "6-rust" make --no-print-directory rust
+          stage "7-lean" make --no-print-directory lean LEAN_JOBS=8
+          stage "8-package-smoke" make --no-print-directory package-smoke
+          stage "9-portable" make --no-print-directory portable
+          stage "10-hygiene" make --no-print-directory hygiene
+          stage "11-diff-check" make --no-print-directory diff-check
+
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "CANONICAL_NONPYTEST_PASS target=$TARGET_SHA clean=yes"
+
+      - name: Run additional research Lean continuity gate
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          started="$(date +%s)"
+          echo "RESEARCH_START $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          make --no-print-directory research-lean LEAN_JOBS=8
+          stopped="$(date +%s)"
+          echo "RESEARCH_PASS elapsed=$((stopped-started))s"
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
