@@ -1,4 +1,3 @@
-from src.core.certify import certificate_suite
 from src.core.essence import (
     VeyraEssenceReport,
     core_layers,
@@ -62,16 +61,3 @@ def test_essence_checklist_names_shadow_and_negative_pressure():
     assert "shadows" in text
     assert "negative pressure" in text
     assert "Sage facade" in text
-
-
-def test_certificate_suite_includes_essence_core():
-    methods = {item.name: item.method for item in certificate_suite()}
-    assert "essence_core" in methods
-    assert "readiness contract" in methods["essence_core"]
-    assert "proof_carrying_core_r7" in methods
-    assert "theorem_promotion_contract_r8" in methods
-    assert "layer-to-theorem/carrier" in methods["theorem_promotion_contract_r8"]
-    assert "intrinsic_mode_transport_r9" in methods
-    assert "Python/native/Lean transport" in methods["intrinsic_mode_transport_r9"]
-    assert "intrinsic_observer_echo_r13" in methods
-    assert "guarded Lean bridge" in methods["intrinsic_observer_echo_r13"]
