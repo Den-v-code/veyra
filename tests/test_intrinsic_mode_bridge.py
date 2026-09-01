@@ -91,27 +91,52 @@ def test_poisoned_cached_report_is_independently_rehashed(monkeypatch):
     assert report.diagnostics == "cached-r9-bridge-integrity-mismatch"
 
 
-def test_r9_toolchain_identity_is_content_bound_not_launcher_metadata(tmp_path, monkeypatch):
+def test_r9_lean_command_executes_resolved_content_pinned_binary(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", sha256(lean.read_bytes()).hexdigest())
+    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
+    monkeypatch.setattr(
+        bridge_module.subprocess, "run",
+        lambda command, **_kwargs: SimpleNamespace(
+            returncode=0, stdout=str(lean) + "\n", stderr=""
+        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
+    )
+    command = bridge_module._lean_command()
+    assert command == [str(lean), "-DwarningAsError=true"]
+    assert command[0] != "/runner/elan"
+
+
+def test_r9_lean_command_rejects_unreviewed_compiler_content(tmp_path, monkeypatch):
+    lean = tmp_path / "lean"
+    lean.write_bytes(b"attacker-compiler")
+    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
+    monkeypatch.setattr(
+        bridge_module.subprocess, "run",
+        lambda command, **_kwargs: SimpleNamespace(
+            returncode=0, stdout=str(lean) + "\n", stderr=""
+        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
+    )
+    assert bridge_module._lean_command() == []
+
+
+def test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path, monkeypatch):
+    lean = tmp_path / "lean"
+    lean.write_bytes(b"reviewed-lean-binary")
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", sha256(lean.read_bytes()).hexdigest())
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
-
-    def run(command, **_kwargs):
-        if command[-1] == "--version":
-            return SimpleNamespace(returncode=0, stdout=version, stderr="")
-        if command[1:] == ["which", "lean"]:
-            return SimpleNamespace(returncode=0, stdout=str(lean) + "\n", stderr="")
-        raise AssertionError(command)
-
-    monkeypatch.setattr(bridge_module.subprocess, "run", run)
-    first = bridge_module._toolchain_identity(
-        ["/runner-a/elan", "run", bridge_module.LEAN_TOOLCHAIN, "lean"]
+    monkeypatch.setattr(
+        bridge_module.subprocess, "run",
+        lambda command, **_kwargs: SimpleNamespace(returncode=0, stdout=version, stderr="")
+        if command[-1] == "--version" else (_ for _ in ()).throw(AssertionError(command)),
     )
-    second = bridge_module._toolchain_identity(
-        ["/runner-b/elan", "run", bridge_module.LEAN_TOOLCHAIN, "lean"]
-    )
+    command = [str(lean), "-DwarningAsError=true"]
+    first = bridge_module._toolchain_identity(command)
+    lean.touch()
+    second = bridge_module._toolchain_identity(command)
     assert first == second
-    assert "sha256=" in first and "binary=lean" in first
+    assert f"sha256={bridge_module.EXPECTED_LEAN_BINARY_SHA256}" in first
+    assert "binary=lean" in first
     assert "path=" not in first and "inode=" not in first and "mtime=" not in first
 
 
