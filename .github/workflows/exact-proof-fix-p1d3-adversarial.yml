@@ -1,0 +1,65 @@
+name: exact-proof-fix-p1d3-adversarial
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-p1d3-adversarial-v1
+
+permissions:
+  contents: read
+
+jobs:
+  profile:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+      - name: Install exact elan and Lean
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          echo "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version | grep -F 'Lean (version 4.30.0-rc2'
+      - name: Profile P1-D3 adversarial
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_all_depth_family_p1d3_adversarial.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+      - name: Attest unchanged target
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
