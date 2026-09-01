@@ -1,0 +1,114 @@
+name: proof-execution-binding-v2
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-execution-binding-v2
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    name: Focused direct Lean execution boundary
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout exact production-test head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: b52ba010143400762bcf705dcba715ac3aaaa8c0
+          persist-credentials: false
+
+      - name: Setup exact Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+          cache: ""
+
+      - name: Install focused test tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pytest==8.4.2 ruff==0.14.10
+
+      - name: Run focused hostile unit boundary
+        shell: bash
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          ruff check src/core/proof_core_bridge.py src/core/intrinsic_mode_bridge.py src/core/proof_core_manifest.py tests/test_proof_core_bridge.py tests/test_intrinsic_mode_bridge.py
+          pytest -q -p no:cacheprovider \
+            tests/test_proof_core_bridge.py::test_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_proof_core_bridge.py::test_lean_command_rejects_unreviewed_compiler_content \
+            tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_filesystem_metadata \
+            tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_rejects_unreviewed_compiler_content \
+            tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata
+
+      - name: Install exact Lean binary without functional elan
+        shell: bash
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
+          root="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$root"
+          tar --zstd -xf "$archive" -C "$root"
+          lean="$root/lean-4.30.0-rc2-linux/bin/lean"
+          printf 'LEAN_DIRECT=%s\n' "$lean" >> "$GITHUB_ENV"
+          printf 'LEAN_DIRECT_SHA=%s\n' "$(sha256sum "$lean" | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+          fake="$RUNNER_TEMP/fake-bin"
+          mkdir -p "$fake"
+          cat > "$fake/elan" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          printf '%s\n' "$*" >> "$RUNNER_TEMP/elan-calls.log"
+          if [[ "$#" -eq 2 && "$1" == "which" && "$2" == "lean" ]]; then
+            printf '%s\n' "$LEAN_DIRECT"
+            exit 0
+          fi
+          echo "fake elan must never execute Lean" >&2
+          exit 91
+          SH
+          chmod +x "$fake/elan"
+          printf '%s\n' "$fake" >> "$GITHUB_PATH"
+
+      - name: Prove R7 compiles with direct pinned Lean
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from src.core.proof_core_bridge import check_proof_core_bridge
+          from src.core.proof_core_manifest import EXPECTED_LEAN_BINARY_SHA256
+
+          assert os.environ["LEAN_DIRECT_SHA"] == EXPECTED_LEAN_BINARY_SHA256
+          report = check_proof_core_bridge()
+          calls = Path(os.environ["RUNNER_TEMP"]).joinpath("elan-calls.log").read_text().splitlines()
+          print("DIRECT_R7_STATUS", report.status)
+          print("DIRECT_R7_LEAN_CHECKED", report.lean_checked)
+          print("DIRECT_R7_TOOLCHAIN", report.toolchain)
+          print("DIRECT_R7_ELAN_CALLS", calls)
+          assert report.status == "checked", report.diagnostics
+          assert report.lean_checked is True
+          assert calls == ["which lean"]
+          assert f"sha256={EXPECTED_LEAN_BINARY_SHA256}" in report.toolchain
+          PY
+
+      - name: Attest exact tested head
+        shell: bash
+        env:
+          TARGET_SHA: b52ba010143400762bcf705dcba715ac3aaaa8c0
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "ATTEST target=$TARGET_SHA clean=yes"
