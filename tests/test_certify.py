@@ -302,4 +302,12 @@ def test_certificate_items_name_veyra_methods(certs):
     assert "native rez/nod/tact/breath/mode" in methods["native_runtime_f4"]
     assert "classical-vs-Veyra" in methods["classical_benchmark_f5"]
     assert "deduction-chain" in methods["deduction_chain_f6"]
+    assert "essence_core" in methods
     assert "readiness contract" in methods["essence_core"]
+    assert "proof_carrying_core_r7" in methods
+    assert "theorem_promotion_contract_r8" in methods
+    assert "layer-to-theorem/carrier" in methods["theorem_promotion_contract_r8"]
+    assert "intrinsic_mode_transport_r9" in methods
+    assert "Python/native/Lean transport" in methods["intrinsic_mode_transport_r9"]
+    assert "intrinsic_observer_echo_r13" in methods
+    assert "guarded Lean bridge" in methods["intrinsic_observer_echo_r13"]
