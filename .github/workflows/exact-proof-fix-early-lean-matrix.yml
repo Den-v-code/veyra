@@ -1,4 +1,4 @@
-name: exact-proof-fix-early-lean-matrix
+name: exact-proof-fix-early-lean-profile
 
 on:
   push:
@@ -9,22 +9,12 @@ permissions:
   contents: read
 
 jobs:
-  early:
+  profile:
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
-    strategy:
-      fail-fast: false
-      matrix:
-        file:
-          - tests/test_all_depth_family_p1d3_certificate.py
-          - tests/test_all_depth_family_p1d3_counterexamples.py
-          - tests/test_axiom_kernel.py
-          - tests/test_benchmark_derivations.py
-          - tests/test_benchmark_evidence.py
-          - tests/test_break_locus.py
-          - tests/test_break_locus_formula.py
-          - tests/test_certificate_result_invariants.py
-
+    timeout-minutes: 180
+    env:
+      TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -42,7 +32,7 @@ jobs:
           python -m pip install --no-deps --requirement requirements/ci-py311.txt
           python -m pip install --no-build-isolation --no-deps -e .
 
-      - name: Install exact Lean routes
+      - name: Install exact elan and Lean
         env:
           ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
           ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
@@ -51,9 +41,8 @@ jobs:
         run: |
           set -euo pipefail
           ea="$RUNNER_TEMP/elan.tar.gz"
-          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 -o "$ea" "$ELAN_ARCHIVE_URL"
-          printf '%s  %s
-' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
           eu="$RUNNER_TEMP/elan-unpack"
           mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
           tar -xzf "$ea" -C "$eu"
@@ -61,9 +50,8 @@ jobs:
           echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
           la="$RUNNER_TEMP/lean.tar.zst"
-          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 -o "$la" "$LEAN_ARCHIVE_URL"
-          printf '%s  %s
-' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
           lu="$RUNNER_TEMP/lean-unpack"
           mkdir -p "$lu"
           tar --zstd -xf "$la" -C "$lu"
@@ -71,13 +59,43 @@ jobs:
           echo "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin" >> "$GITHUB_PATH"
           "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version | grep -F 'Lean (version 4.30.0-rc2'
 
-      - name: Profile exact file
-        env:
-          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+      - name: Profile all-depth certificate
         run: |
-          set -euo pipefail
-          start="$(date +%s)"
-          python -m pytest -vv --durations=100 -p no:cacheprovider "${{ matrix.file }}"
-          stop="$(date +%s)"
-          printf 'PROFILE file=%s elapsed=%ss
-' "${{ matrix.file }}" "$((stop-start))"
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_all_depth_family_p1d3_certificate.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Profile all-depth counterexamples
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_all_depth_family_p1d3_counterexamples.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Profile axiom kernel
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_axiom_kernel.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Profile benchmark derivations
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_benchmark_derivations.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Profile break locus
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_break_locus.py tests/test_break_locus_formula.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Profile certificate invariants
+        run: |
+          date -u '+START %Y-%m-%dT%H:%M:%SZ'
+          python -m pytest -vv --durations=50 -p no:cacheprovider tests/test_certificate_result_invariants.py
+          date -u '+END %Y-%m-%dT%H:%M:%SZ'
+
+      - name: Attest unchanged target
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
