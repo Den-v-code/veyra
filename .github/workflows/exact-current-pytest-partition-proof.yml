@@ -1,0 +1,113 @@
+name: exact-current-pytest-partition-proof
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-fix-partition-proof-v1
+
+permissions:
+  contents: read
+
+jobs:
+  partition:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      TARGET_SHA: 344f68a9457d906c2ac559138363bd4797f509bf
+      PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 344f68a9457d906c2ac559138363bd4797f509bf
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Prove deterministic file partition
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from __future__ import annotations
+          from hashlib import sha256
+          from pathlib import Path
+          import pytest
+
+          root=Path.cwd().resolve()
+
+          class Collector:
+              def __init__(self) -> None:
+                  self.rows=[]
+
+              def pytest_collection_finish(self, session) -> None:
+                  self.rows=[
+                      (
+                          item.nodeid,
+                          Path(str(item.path)).resolve().relative_to(root).as_posix(),
+                      )
+                      for item in session.items
+                  ]
+
+          collector=Collector()
+          rc=pytest.main(
+              ["--collect-only","-q","-p","no:cacheprovider"],
+              plugins=[collector],
+          )
+          if rc != 0:
+              raise SystemExit(rc)
+          rows=collector.rows
+          assert len(rows)==3965, len(rows)
+          all_ids={node for node,_ in rows}
+          assert len(all_ids)==len(rows), "duplicate-nodeid"
+
+          buckets=[]
+          for shard in range(4):
+              ids={
+                  node
+                  for node,path in rows
+                  if int.from_bytes(sha256(path.encode()).digest()[:8],"big") % 4 == shard
+              }
+              buckets.append(ids)
+              digest=sha256(
+                  ("\n".join(sorted(ids))+"\n").encode()
+              ).hexdigest()
+              files={
+                  path
+                  for node,path in rows
+                  if node in ids
+              }
+              print(
+                  f"PARTITION shard={shard}/4 nodes={len(ids)} "
+                  f"files={len(files)} digest={digest}",
+                  flush=True,
+              )
+
+          union=set().union(*buckets)
+          assert union==all_ids, (len(union),len(all_ids))
+          for left in range(4):
+              for right in range(left+1,4):
+                  assert buckets[left].isdisjoint(buckets[right]), (left,right)
+
+          global_digest=sha256(
+              ("\n".join(sorted(all_ids))+"\n").encode()
+          ).hexdigest()
+          print(
+              f"PARTITION_PROOF total_nodes={len(all_ids)} "
+              f"global_digest={global_digest} union=exact disjoint=yes",
+              flush=True,
+          )
+          PY
+
+      - name: Attest unchanged target
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
