@@ -7,6 +7,7 @@ import logging
 from typing import cast
 
 from .intrinsic_observer_echo_effects import intrinsic_observer_echo_effect_digest
+from .intrinsic_observer_echo_evidence import EXPECTED_EVIDENCE_DIGEST
 from .intrinsic_observer_echo_formal_bridge_core import (
     _CHECKED_DIAGNOSTICS, _blocked, _checked_report, _origins,
     check_intrinsic_observer_echo_formal_bridge,
@@ -53,6 +54,7 @@ def _matches_reviewed_envelope(report: IntrinsicObserverEchoFormalBridgeReport) 
         and report.source_elaboration_binding_digest == EXPECTED_SOURCE_ELABORATION_BINDING
         and report.r11_binding_digest == EXPECTED_R11_BINDING
         and report.r12_binding_digest == EXPECTED_R12_BINDING
+        and report.executable_evidence_digest == EXPECTED_EVIDENCE_DIGEST
         and report.source_digests == tuple(EXPECTED_R13_TCB_DIGESTS.items())
         and report.object_records == tuple(EXPECTED_R13_OBJECTS.items())
         and report.snapshot_digest == EXPECTED_SNAPSHOT_DIGEST
