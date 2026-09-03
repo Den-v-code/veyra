@@ -126,7 +126,7 @@ def test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path
     monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", sha256(lean.read_bytes()).hexdigest())
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
+        bridge_module, "_guarded_lean_subprocess",
         lambda command, **_kwargs: SimpleNamespace(returncode=0, stdout=version, stderr="")
         if command[-1] == "--version" else (_ for _ in ()).throw(AssertionError(command)),
     )
