@@ -11,6 +11,7 @@ from src.core.proof_core_bridge import (
 )
 from src.core.proof_core_lean_render import render_resonance_lean
 from src.core.proof_core_resonance import intrinsic_resonance_theorem
+from src.core.proof_core_snapshot import SNAPSHOT_NAMES
 from src.core.proof_core_types import Bound, CoreType, EqRefl, Equal, Forall, ForallIntro
 
 
@@ -189,7 +190,7 @@ def test_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path, m
 def test_runtime_integrity_drift_blocks_compile(tmp_path, monkeypatch):
     sources = {
         name: Path("proofs/lean", filename).read_bytes()
-        for name, filename in bridge_module.SNAPSHOT_NAMES.items()
+        for name, filename in SNAPSHOT_NAMES.items()
     }
     snapshot = bridge_module.materialize_lean_snapshot(
         tmp_path / "build", sources, "1" * 64,
@@ -210,7 +211,7 @@ def test_runtime_integrity_drift_blocks_compile(tmp_path, monkeypatch):
 def test_success_without_reviewed_object_is_rejected(tmp_path, monkeypatch):
     sources = {
         name: Path("proofs/lean", filename).read_bytes()
-        for name, filename in bridge_module.SNAPSHOT_NAMES.items()
+        for name, filename in SNAPSHOT_NAMES.items()
     }
     snapshot = bridge_module.materialize_lean_snapshot(
         tmp_path / "build", sources, "2" * 64,
