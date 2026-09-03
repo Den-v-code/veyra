@@ -50,6 +50,9 @@ jobs:
           lu="$RUNNER_TEMP/lean-unpack"; mkdir -p "$lu"
           tar --zstd -xf "$la" -C "$lu"
           mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lean"
+          test "$(sha256sum "$lean_bin" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "$(dirname "$lean_bin")" >> "$GITHUB_PATH"
           "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version
 
       - name: Focused identity regressions
