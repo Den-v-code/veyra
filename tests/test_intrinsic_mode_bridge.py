@@ -91,31 +91,28 @@ def test_poisoned_cached_report_is_independently_rehashed(monkeypatch):
     assert report.diagnostics == "cached-r9-bridge-integrity-mismatch"
 
 
-def test_r9_lean_command_executes_resolved_content_pinned_binary(tmp_path, monkeypatch):
+def test_r9_lean_command_uses_fixed_content_pinned_binary(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
-    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", sha256(lean.read_bytes()).hexdigest())
-    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
+    expected_runtime = ("runtime", 2365, 522231408)
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(
-            returncode=0, stdout=str(lean) + "\n", stderr=""
-        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
+        bridge_module, "EXPECTED_LEAN_BINARY_SHA256",
+        sha256(lean.read_bytes()).hexdigest(),
     )
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_RUNTIME", expected_runtime)
+    monkeypatch.setattr(bridge_module, "lean_runtime_digest", lambda: expected_runtime)
     command = bridge_module._lean_command()
     assert command == [str(lean), "-DwarningAsError=true"]
-    assert command[0] != "/runner/elan"
 
 
 def test_r9_lean_command_rejects_unreviewed_compiler_content(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"attacker-compiler")
-    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(
-            returncode=0, stdout=str(lean) + "\n", stderr=""
-        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
+        bridge_module, "lean_runtime_digest",
+        lambda: bridge_module.EXPECTED_LEAN_RUNTIME,
     )
     assert bridge_module._lean_command() == []
 
@@ -123,12 +120,15 @@ def test_r9_lean_command_rejects_unreviewed_compiler_content(tmp_path, monkeypat
 def test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
-    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", sha256(lean.read_bytes()).hexdigest())
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
+    expected_runtime = ("abc", 2365, 522231408)
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_RUNTIME", expected_runtime)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(returncode=0, stdout=version, stderr="")
-        if command[-1] == "--version" else (_ for _ in ()).throw(AssertionError(command)),
+        bridge_module,
+        "guarded_lean_run",
+        lambda *args, **kwargs: SimpleNamespace(
+            returncode=0, stdout=version, stderr=""
+        ),
     )
     command = [str(lean), "-DwarningAsError=true"]
     first = bridge_module._toolchain_identity(command)
@@ -136,8 +136,49 @@ def test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path
     second = bridge_module._toolchain_identity(command)
     assert first == second
     assert f"sha256={bridge_module.EXPECTED_LEAN_BINARY_SHA256}" in first
+    assert "merkle=abc|files=2365|bytes=522231408" in first
     assert "binary=lean" in first
     assert "path=" not in first and "inode=" not in first and "mtime=" not in first
+
+
+def test_r9_runtime_integrity_drift_blocks_compile(tmp_path, monkeypatch):
+    sources = {
+        name: Path("proofs/lean", filename).read_bytes()
+        for name, filename in bridge_module.SNAPSHOT_NAMES.items()
+    }
+    snapshot = bridge_module.materialize_intrinsic_snapshot(
+        tmp_path / "build", sources, "3" * 64,
+    )
+    monkeypatch.setattr(
+        bridge_module, "guarded_lean_run",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            ValueError("r10-runtime-integrity-drift")
+        ),
+    )
+    checked, diagnostics = bridge_module._compile(
+        ["/reviewed/lean"], snapshot, sources,
+    )
+    assert not checked
+    assert diagnostics == "r10-runtime-integrity-drift"
+
+
+def test_r9_success_without_reviewed_object_is_rejected(tmp_path, monkeypatch):
+    sources = {
+        name: Path("proofs/lean", filename).read_bytes()
+        for name, filename in bridge_module.SNAPSHOT_NAMES.items()
+    }
+    snapshot = bridge_module.materialize_intrinsic_snapshot(
+        tmp_path / "build", sources, "4" * 64,
+    )
+    monkeypatch.setattr(
+        bridge_module, "guarded_lean_run",
+        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout="", stderr=""),
+    )
+    checked, diagnostics = bridge_module._compile(
+        ["/reviewed/lean"], snapshot, sources,
+    )
+    assert not checked
+    assert diagnostics == "r9-lean-object-unreadable"
 
 
 def test_toolchain_and_boundary_are_exact_not_generic_claims():
