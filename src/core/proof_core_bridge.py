@@ -17,6 +17,8 @@ from .proof_core_manifest import (
     EXPECTED_LEAN_BINARY_SHA256, EXPECTED_TCB_DIGESTS, TCB_SCHEMA,
 )
 from .proof_core_snapshot import LeanSourceSnapshot, materialize_lean_snapshot
+from .proof_elaboration_runtime_guard import ProtectedClosure, guarded_closures_run
+from .proof_elaboration_toolchain import records_digest
 from .proof_core_resonance import (
     IntrinsicResonanceTheorem, intrinsic_resonance_theorem,
     verify_intrinsic_theorem_binding,
@@ -37,6 +39,7 @@ CHECKED_DIAGNOSTICS = ";".join(
     )
 )
 CHECKED_BOUNDARY = "exact reviewed Python/Lean recurrence calculus and intrinsic reflexivity only; no cyclic/phase bridge"
+_LEAN_EXECUTION_DOMAIN = b"veyra-pinned-lean-execution-v1\0"
 
 
 @dataclass(frozen=True)
@@ -87,11 +90,11 @@ def _lean_command() -> list[str]:
         [elan, "which", "lean"], cwd=PROJECT_ROOT,
         text=True, capture_output=True, check=False,
     )
-    lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
     try:
+        lean_path = Path(resolved.stdout.strip()).resolve(strict=True) if resolved.returncode == 0 else Path()
         lean_bytes = lean_path.read_bytes() if lean_path.is_file() else b""
     except OSError:
-        lean_bytes = b""
+        lean_path, lean_bytes = Path(), b""
     if not lean_bytes or _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
         logger.error("proof_core_bridge._lean_command pinned Lean content unavailable")
         return []
@@ -100,9 +103,43 @@ def _lean_command() -> list[str]:
     return result
 
 
+def _lean_execution_closure(command: list[str]) -> ProtectedClosure:
+    lean_path = Path(command[0])
+    try:
+        lean_bytes = lean_path.read_bytes()
+    except OSError as exc:
+        raise ValueError("pinned-lean-binary-unavailable") from exc
+    digest = sha256(lean_bytes).digest()
+    if digest.hex() != EXPECTED_LEAN_BINARY_SHA256:
+        raise ValueError("pinned-lean-binary-digest-mismatch")
+    root = lean_path.parent
+    expected = records_digest(
+        ((lean_path, len(lean_bytes), digest),), root, _LEAN_EXECUTION_DOMAIN,
+    )
+    return ProtectedClosure(
+        "lean-executable", (lean_path,), root, _LEAN_EXECUTION_DOMAIN, expected,
+    )
+
+
+def _guarded_lean_subprocess(
+    command: list[str], *, cwd: Path, env: dict[str, str] | os._Environ[str] | None = None,
+    timeout: int | None = None,
+) -> subprocess.CompletedProcess[str]:
+    closure = _lean_execution_closure(command)
+    try:
+        return guarded_closures_run(
+            command, cwd=cwd, env=os.environ if env is None else env,
+            timeout=timeout, closures=(closure,),
+        )
+    except RuntimeError as exc:
+        raise ValueError("pinned-lean-execution-guard-unavailable") from exc
+
+
 def _toolchain_identity(command: list[str]) -> str:
     logger.debug("proof_core_bridge._toolchain_identity entry command=%r", command)
-    proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+    proc = _guarded_lean_subprocess(
+        command + ["--version"], cwd=PROJECT_ROOT, timeout=30,
+    )
     version = (proc.stdout or proc.stderr).strip()
     match = re.fullmatch(r"Lean \(version ([^,\s)]+)(?:,.*)?\)", version)
     if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
@@ -147,7 +184,17 @@ def _compile_chain(
         name = source.stem
         emit = source_name != "export"
         output = ["-o", str(snapshot.output_dir / f"{name}.olean")] if emit else []
-        proc = subprocess.run(command + ["-R", str(snapshot.root)] + output + [str(source)], cwd=snapshot.root, env=env, text=True, capture_output=True, check=False)
+        try:
+            proc = _guarded_lean_subprocess(
+                command + ["-R", str(snapshot.root)] + output + [str(source)],
+                cwd=snapshot.root, env=env,
+            )
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            logger.error(
+                "proof_core_bridge._compile_chain guarded Lean blocked name=%s error=%s",
+                name, exc,
+            )
+            return False, ";".join(diagnostics) + f":{name}:execution-integrity:{exc}"
         combined = (proc.stderr or "") + (proc.stdout or "")
         diagnostics.append(f"{index}/4:{name}:rc={proc.returncode}")
         if proc.returncode or "warning:" in combined.lower():
