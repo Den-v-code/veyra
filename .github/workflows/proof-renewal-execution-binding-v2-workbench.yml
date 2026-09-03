@@ -379,19 +379,81 @@ jobs:
           p.write_text(text); print("RENEW_R13_CONTRACT",digest)
           PY
 
-      - name: Renew research Lean base-source digests
+      - name: Renew research Lean source and aggregate roots
         run: |
           python - <<'PY'
           from hashlib import sha256
+          import json
           from pathlib import Path
-          import re
-          p=Path("experimental/research_lean/manifest.json"); text=p.read_text()
-          for path in ("proofs/lean/VeyraProofModeTransport.lean","proofs/lean/VeyraProofElaboration.lean"):
-            digest=sha256(Path(path).read_bytes()).hexdigest()
-            pattern=rf'("path": "{re.escape(path)}",\n\s+"sha256": ")[0-9a-f]{{64}}(")'
-            text,n=re.subn(pattern,rf'\g<1>{digest}\2',text); assert n==1,(path,n)
-            print("RENEW_RESEARCH",path,digest)
-          p.write_text(text)
+
+          def domain_root(domain, rows):
+              digest = sha256()
+              for value in (domain, *rows):
+                  encoded = value.encode("utf-8")
+                  digest.update(len(encoded).to_bytes(8, "big"))
+                  digest.update(encoded)
+              return digest.hexdigest()
+
+          p = Path("experimental/research_lean/manifest.json")
+          raw = json.loads(p.read_text())
+          replacements = {
+              path: sha256(Path(path).read_bytes()).hexdigest()
+              for path in (
+                  "proofs/lean/VeyraProofModeTransport.lean",
+                  "proofs/lean/VeyraProofElaboration.lean",
+              )
+          }
+          seen = set()
+          for row in raw["base_sources"]:
+              if row["path"] in replacements:
+                  row["sha256"] = replacements[row["path"]]
+                  seen.add(row["path"])
+                  print("RENEW_RESEARCH", row["path"], row["sha256"])
+          assert seen == set(replacements), (seen, replacements)
+
+          roots = {}
+          for group, key in (("base", "base_sources"), ("research", "research_sources")):
+              roots[group] = domain_root(
+                  f"veyra.research-lean.sources.v1:{group}",
+                  tuple(
+                      f"{row['path']}\0{row['sha256']}"
+                      for row in raw[key]
+                  ),
+              )
+          raw["source_roots"] = roots
+
+          toolchain = raw["toolchain"]
+          claims = raw["headline_claims"]
+          closures = raw["axiom_closure"]
+          declarations = tuple(
+              name
+              for row in raw["research_sources"]
+              for name in row["declarations"]
+          )
+          proof_rows = (
+              f"toolchain\0{toolchain['name']}\0{toolchain['version']}\0{toolchain['commit']}",
+              f"base\0{roots['base']}",
+              f"research\0{roots['research']}",
+              *(
+                  "claim\0" + name + "\0" + "\0".join((
+                      claims[name]["statement"],
+                      claims[name]["scope"],
+                      claims[name]["registry_relation"],
+                  ))
+                  for name in raw["headline_declarations"]
+              ),
+              *(
+                  f"axioms\0{name}\0{','.join(closures[name])}"
+                  for name in declarations
+              ),
+          )
+          raw["proof_root"] = domain_root(
+              "veyra.research-lean.proof.v1",
+              tuple(proof_rows),
+          )
+          p.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+          print("RENEW_RESEARCH_ROOTS", roots)
+          print("RENEW_RESEARCH_PROOF_ROOT", raw["proof_root"])
           PY
 
       - name: Final replay smoke
