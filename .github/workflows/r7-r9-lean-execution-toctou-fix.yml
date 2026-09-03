@@ -70,9 +70,10 @@ jobs:
               root = Path(td)
               fake_bin = root / "bin"
               fake_bin.mkdir()
-              lean = root / "lean"
-              lean.write_bytes(official.read_bytes())
-              lean.chmod(0o755)
+              lean = official
+              backup = root / "lean.backup"
+              backup.write_bytes(official.read_bytes())
+              backup.chmod(0o755)
               hostile = root / "hostile-lean"
               hostile.write_text(
                   "#!/usr/bin/env bash\n"
@@ -114,6 +115,7 @@ jobs:
               ):
                   report = bridge.check_proof_core_bridge()
 
+              os.replace(backup, lean)
               calls = count.read_text() if count.exists() else ""
               print("TOCTOU_FIX_STATUS", report.status)
               print("TOCTOU_FIX_LEAN_CHECKED", report.lean_checked)
