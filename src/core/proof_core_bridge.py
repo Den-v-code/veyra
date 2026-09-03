@@ -10,6 +10,7 @@ import os
 import re
 import shutil
 import subprocess
+from typing import Mapping
 
 from .proof_core_codec import canonical_json
 from .proof_core_lean_render import render_resonance_lean
@@ -122,7 +123,7 @@ def _lean_execution_closure(command: list[str]) -> ProtectedClosure:
 
 
 def _guarded_lean_subprocess(
-    command: list[str], *, cwd: Path, env: dict[str, str] | os._Environ[str] | None = None,
+    command: list[str], *, cwd: Path, env: Mapping[str, str] | None = None,
     timeout: int | None = None,
 ) -> subprocess.CompletedProcess[str]:
     closure = _lean_execution_closure(command)
