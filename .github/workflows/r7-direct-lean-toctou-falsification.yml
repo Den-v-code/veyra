@@ -1,0 +1,141 @@
+name: r7-direct-lean-toctou-falsification
+
+on:
+  push:
+    branches:
+      - verify/r7-direct-lean-toctou-falsification-v1
+
+permissions:
+  contents: read
+
+jobs:
+  falsify:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact canonical candidate
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: a11fee75f9e4f803ce72b807f484eae407e8523f
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install package
+        run: |
+          set -euo pipefail
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact reviewed Lean
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
+          root="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$root"
+          tar --zstd -xf "$archive" -C "$root"
+          lean="$root/lean-4.30.0-rc2-linux/bin/lean"
+          test "$(sha256sum "$lean" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "OFFICIAL_LEAN=$lean" >> "$GITHUB_ENV"
+
+      - name: Falsify post-check executable-path integrity
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from unittest.mock import patch
+
+          import src.core.proof_core_bridge as bridge
+
+          official = Path(os.environ["OFFICIAL_LEAN"])
+          with TemporaryDirectory() as td:
+              root = Path(td)
+              fake_bin = root / "bin"
+              fake_bin.mkdir()
+              link = root / "lean-link"
+              link.symlink_to(official)
+              count = root / "attack-count"
+              hostile = root / "hostile-lean"
+              hostile.write_text(
+                  "#!/usr/bin/env bash\n"
+                  "set -euo pipefail\n"
+                  "n=0\n"
+                  "if [[ -f \"$ATTACK_COUNT\" ]]; then n=$(cat \"$ATTACK_COUNT\"); fi\n"
+                  "n=$((n+1))\n"
+                  "printf '%s' \"$n\" > \"$ATTACK_COUNT\"\n"
+                  "if [[ \"$n\" -ge 4 ]]; then\n"
+                  "  tmp=\"$LEAN_LINK.restore\"\n"
+                  "  ln -s \"$OFFICIAL_LEAN\" \"$tmp\"\n"
+                  "  mv -Tf \"$tmp\" \"$LEAN_LINK\"\n"
+                  "fi\n"
+                  "exit 0\n"
+              )
+              hostile.chmod(0o755)
+              elan = fake_bin / "elan"
+              elan.write_text(
+                  "#!/usr/bin/env bash\n"
+                  "set -euo pipefail\n"
+                  "if [[ \"$#\" -eq 2 && \"$1\" == \"which\" && \"$2\" == \"lean\" ]]; then\n"
+                  "  printf '%s\\n' \"$LEAN_LINK\"\n"
+                  "  exit 0\n"
+                  "fi\n"
+                  "exit 91\n"
+              )
+              elan.chmod(0o755)
+
+              os.environ["PATH"] = str(fake_bin) + os.pathsep + os.environ["PATH"]
+              os.environ["LEAN_LINK"] = str(link)
+              os.environ["ATTACK_COUNT"] = str(count)
+              os.environ["OFFICIAL_LEAN"] = str(official)
+
+              build = root / "build"
+              original_materialize = bridge.materialize_lean_snapshot
+
+              def materialize_then_swap(*args, **kwargs):
+                  snapshot = original_materialize(*args, **kwargs)
+                  tmp = root / "lean-link.attack"
+                  tmp.symlink_to(hostile)
+                  os.replace(tmp, link)
+                  assert link.resolve() == hostile.resolve()
+                  return snapshot
+
+              with (
+                  patch.object(bridge, "BUILD_DIR", build),
+                  patch.object(bridge, "materialize_lean_snapshot", side_effect=materialize_then_swap),
+              ):
+                  report = bridge.check_proof_core_bridge()
+                  accepted = bridge.verify_proof_core_bridge_report(report)
+
+              calls = int(count.read_text())
+              oleans = tuple(build.rglob("*.olean"))
+              print("TOCTOU_STATUS", report.status)
+              print("TOCTOU_LEAN_CHECKED", report.lean_checked)
+              print("TOCTOU_VERIFIER_ACCEPTED", accepted)
+              print("TOCTOU_HOSTILE_COMPILE_CALLS", calls)
+              print("TOCTOU_OLEAN_COUNT", len(oleans))
+              print("TOCTOU_LINK_RESTORED", link.resolve() == official.resolve())
+
+              assert calls == 4
+              assert len(oleans) == 0
+              assert link.resolve() == official.resolve()
+              assert report.status == "checked"
+              assert report.lean_checked is True
+              assert accepted is True
+          PY
+
+      - name: Attest canonical target unchanged
+        env:
+          TARGET_SHA: a11fee75f9e4f803ce72b807f484eae407e8523f
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
