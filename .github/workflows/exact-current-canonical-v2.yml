@@ -1,0 +1,490 @@
+name: exact-current-canonical-v2
+
+on:
+  push:
+    branches:
+      - verify/current-tree-proof-execution-binding-v2-canonical
+
+permissions:
+  contents: read
+
+env:
+  TARGET_SHA: a11fee75f9e4f803ce72b807f484eae407e8523f
+  PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+
+jobs:
+  partition:
+    name: Exact pytest partition proof
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: a11fee75f9e4f803ce72b807f484eae407e8523f
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Prove deterministic four-way partition
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import pytest
+
+          root = Path.cwd().resolve()
+
+          class Collector:
+              def __init__(self):
+                  self.rows = []
+
+              def pytest_collection_finish(self, session):
+                  self.rows = [
+                      (
+                          item.nodeid,
+                          Path(str(item.path)).resolve().relative_to(root).as_posix(),
+                      )
+                      for item in session.items
+                  ]
+
+          collector = Collector()
+          rc = pytest.main(
+              ["--collect-only", "-q", "-p", "no:cacheprovider"],
+              plugins=[collector],
+          )
+          if rc != 0:
+              raise SystemExit(rc)
+          rows = collector.rows
+          assert rows, "empty-test-inventory"
+          all_ids = {node for node, _ in rows}
+          assert len(all_ids) == len(rows), "duplicate-nodeid"
+
+          buckets = []
+          for shard in range(4):
+              ids = {
+                  node
+                  for node, path in rows
+                  if int.from_bytes(sha256(path.encode()).digest()[:8], "big") % 4 == shard
+              }
+              assert ids, f"empty-shard:{shard}"
+              buckets.append(ids)
+              files = {
+                  path
+                  for node, path in rows
+                  if node in ids
+              }
+              digest = sha256(("\n".join(sorted(ids)) + "\n").encode()).hexdigest()
+              print(
+                  f"PARTITION shard={shard}/4 nodes={len(ids)} files={len(files)} digest={digest}",
+                  flush=True,
+              )
+
+          union = set().union(*buckets)
+          assert union == all_ids, (len(union), len(all_ids))
+          for left in range(4):
+              for right in range(left + 1, 4):
+                  assert buckets[left].isdisjoint(buckets[right]), (left, right)
+
+          global_digest = sha256(
+              ("\n".join(sorted(all_ids)) + "\n").encode()
+          ).hexdigest()
+          print(
+              f"PARTITION_PROOF total_nodes={len(all_ids)} "
+              f"global_digest={global_digest} union=exact disjoint=yes",
+              flush=True,
+          )
+          PY
+
+      - name: Attest unchanged target
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+  pytest:
+    name: Exact pytest shard ${{ matrix.shard }}/4
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3]
+    env:
+      SHARDS: "4"
+      SHARD: "${{ matrix.shard }}"
+    steps:
+      - name: Checkout exact canonical tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: a11fee75f9e4f803ce72b807f484eae407e8523f
+          persist-credentials: false
+
+      - name: Attest exact checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+      - name: Provision CPython 3.11.14 and SageMath 10.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39
+        with:
+          micromamba-version: "2.9.0-0"
+          environment-name: veyra-full
+          create-args: >-
+            python=3.11.14
+            sage=10.7
+          init-shell: bash
+          cache-environment: true
+          post-cleanup: all
+
+      - name: Verify Python and Sage identities
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          print("ATTEST python=" + platform.python_version())
+          PY
+          sage --version
+          sage -python - <<'PY'
+          import platform
+          assert platform.python_version() == "3.11.14", platform.python_version()
+          import sage.all
+          print("ATTEST sage-python=" + platform.python_version())
+          PY
+
+      - name: Install exact Python verification tools
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact elan and Lean
+        shell: bash -el {0}
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          echo "$ELAN_ARCHIVE_SHA256  $ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          echo "$LEAN_ARCHIVE_SHA256  $la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lean"
+          test "$(sha256sum "$lean_bin" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "$(dirname "$lean_bin")" >> "$GITHUB_PATH"
+          "$lean_bin" --version | grep -F 'Lean (version 4.30.0-rc2'
+
+      - name: Install exact Rust toolchain
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+          rustc +1.95.0 --version
+
+      - name: Run deterministic complete-suite shard
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import os
+          import pytest
+
+          root = Path.cwd().resolve()
+          shard = int(os.environ["SHARD"])
+          shards = int(os.environ["SHARDS"])
+          assert shards == 4 and 0 <= shard < shards
+
+          class FileShard:
+              def __init__(self):
+                  self.total_nodes = 0
+                  self.selected_nodes = 0
+                  self.selected_files = set()
+                  self.global_digest = ""
+                  self.selected_digest = ""
+
+              def pytest_collection_modifyitems(self, config, items):
+                  all_nodeids = tuple(sorted(item.nodeid for item in items))
+                  self.total_nodes = len(all_nodeids)
+                  self.global_digest = sha256(
+                      ("\n".join(all_nodeids) + "\n").encode()
+                  ).hexdigest()
+
+                  selected = []
+                  deselected = []
+                  selected_ids = []
+                  for item in items:
+                      path = Path(str(item.path)).resolve().relative_to(root).as_posix()
+                      bucket = int.from_bytes(
+                          sha256(path.encode()).digest()[:8], "big"
+                      ) % shards
+                      if bucket == shard:
+                          selected.append(item)
+                          selected_ids.append(item.nodeid)
+                          self.selected_files.add(path)
+                      else:
+                          deselected.append(item)
+
+                  self.selected_nodes = len(selected)
+                  self.selected_digest = sha256(
+                      ("\n".join(sorted(selected_ids)) + "\n").encode()
+                  ).hexdigest()
+                  config.hook.pytest_deselected(items=deselected)
+                  items[:] = selected
+
+              def pytest_collection_finish(self, session):
+                  print(
+                      "SHARD_INVENTORY "
+                      f"shard={shard}/{shards} "
+                      f"total_nodes={self.total_nodes} "
+                      f"selected_nodes={self.selected_nodes} "
+                      f"selected_files={len(self.selected_files)} "
+                      f"global_digest={self.global_digest} "
+                      f"selected_digest={self.selected_digest}",
+                      flush=True,
+                  )
+
+          plugin = FileShard()
+          rc = pytest.main(["-q", "-p", "no:cacheprovider"], plugins=[plugin])
+          if not plugin.total_nodes or not plugin.selected_nodes or not plugin.selected_files:
+              raise SystemExit(f"invalid-shard:{shard}:{plugin.total_nodes}:{plugin.selected_nodes}")
+          raise SystemExit(rc)
+          PY
+
+      - name: Attest unchanged target
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "ATTEST target=$TARGET_SHA shard=$SHARD clean=yes"
+
+  nonpytest:
+    name: Exact non-pytest current-tree gates
+    runs-on: ubuntu-24.04
+    timeout-minutes: 350
+    steps:
+      - name: Checkout exact canonical tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: a11fee75f9e4f803ce72b807f484eae407e8523f
+          persist-credentials: false
+
+      - name: Attest exact checkout
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+
+      - name: Provision CPython 3.11.14 and SageMath 10.7
+        uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39
+        with:
+          micromamba-version: "2.9.0-0"
+          environment-name: veyra-full
+          create-args: >-
+            python=3.11.14
+            sage=10.7
+          init-shell: bash
+          cache-environment: true
+          post-cleanup: all
+
+      - name: Install exact Python verification tools
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Install exact elan and Lean
+        shell: bash -el {0}
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          echo "$ELAN_ARCHIVE_SHA256  $ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          echo "$LEAN_ARCHIVE_SHA256  $la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lean"
+          test "$(sha256sum "$lean_bin" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "$(dirname "$lean_bin")" >> "$GITHUB_PATH"
+
+      - name: Install exact Rust toolchain
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          rustup toolchain install 1.95.0 --profile minimal --component rustfmt
+          cargo +1.95.0 --version
+          rustc +1.95.0 --version
+
+      - name: Run canonical non-pytest make verify stages
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          stage() {
+            label="$1"
+            shift
+            echo "STAGE_START $label $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+            started="$(date +%s)"
+            "$@"
+            stopped="$(date +%s)"
+            echo "STAGE_PASS $label elapsed=$((stopped-started))s $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          }
+
+          stage "1-ruff" make --no-print-directory lint
+          stage "3-certificates" make --no-print-directory cert
+          stage "4-real-sage-smoke" make --no-print-directory sage-required
+          stage "5-sage-doctest" make --no-print-directory sage-doctest
+          stage "6-rust" make --no-print-directory rust
+          stage "7-lean" make --no-print-directory lean LEAN_JOBS=8
+          stage "8-package-smoke" make --no-print-directory package-smoke
+          stage "9-portable" make --no-print-directory portable
+          stage "10-hygiene" make --no-print-directory hygiene
+          stage "11-diff-check" make --no-print-directory diff-check
+
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "CANONICAL_NONPYTEST_PASS target=$TARGET_SHA clean=yes"
+
+      - name: Run additional research Lean continuity gate
+        shell: bash -el {0}
+        run: |
+          set -euo pipefail
+          make --no-print-directory research-lean LEAN_JOBS=8
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "RESEARCH_PASS target=$TARGET_SHA clean=yes"
+
+  execution-boundary:
+    name: Live direct Lean execution boundary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout exact canonical tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: a11fee75f9e4f803ce72b807f484eae407e8523f
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install focused test tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pytest==9.0.3 ruff==0.15.6
+
+      - name: Run focused hostile unit boundary
+        run: |
+          set -euo pipefail
+          ruff check src/core/proof_core_bridge.py src/core/intrinsic_mode_bridge.py src/core/proof_core_manifest.py tests/test_proof_core_bridge.py tests/test_intrinsic_mode_bridge.py
+          pytest -q -p no:cacheprovider             tests/test_proof_core_bridge.py::test_lean_command_executes_resolved_content_pinned_binary             tests/test_proof_core_bridge.py::test_lean_command_rejects_unreviewed_compiler_content             tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_filesystem_metadata             tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_executes_resolved_content_pinned_binary             tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_rejects_unreviewed_compiler_content             tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata
+
+      - name: Install exact Lean binary behind nonfunctional elan
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
+          root="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$root"
+          tar --zstd -xf "$archive" -C "$root"
+          lean="$root/lean-4.30.0-rc2-linux/bin/lean"
+          test "$(sha256sum "$lean" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          printf 'LEAN_DIRECT=%s\n' "$lean" >> "$GITHUB_ENV"
+
+          fake="$RUNNER_TEMP/fake-bin"
+          mkdir -p "$fake"
+          cat > "$fake/elan" <<'SH'
+          #!/usr/bin/env bash
+          set -euo pipefail
+          printf '%s\n' "$*" >> "$RUNNER_TEMP/elan-calls.log"
+          if [[ "$#" -eq 2 && "$1" == "which" && "$2" == "lean" ]]; then
+            printf '%s\n' "$LEAN_DIRECT"
+            exit 0
+          fi
+          echo "fake elan must never execute Lean" >&2
+          exit 91
+          SH
+          chmod +x "$fake/elan"
+          printf '%s\n' "$fake" >> "$GITHUB_PATH"
+
+      - name: Prove R7 compiles only through direct pinned Lean
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from src.core.proof_core_bridge import check_proof_core_bridge
+          from src.core.proof_core_manifest import EXPECTED_LEAN_BINARY_SHA256
+
+          report = check_proof_core_bridge()
+          calls = Path(os.environ["RUNNER_TEMP"]).joinpath("elan-calls.log").read_text().splitlines()
+          print("DIRECT_R7_STATUS", report.status)
+          print("DIRECT_R7_LEAN_CHECKED", report.lean_checked)
+          print("DIRECT_R7_ELAN_CALLS", calls)
+          assert report.status == "checked", report.diagnostics
+          assert report.lean_checked is True
+          assert calls == ["which lean"]
+          assert f"sha256={EXPECTED_LEAN_BINARY_SHA256}" in report.toolchain
+          PY
+
+      - name: Attest unchanged target
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "EXECUTION_BOUNDARY_PASS target=$TARGET_SHA clean=yes"
