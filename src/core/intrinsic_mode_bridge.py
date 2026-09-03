@@ -19,7 +19,8 @@ from .intrinsic_mode_lean_render import (
 from .intrinsic_mode_manifest import EXPECTED_R9_TCB_DIGESTS, TCB_SCHEMA
 from .intrinsic_mode_snapshot import SNAPSHOT_NAMES, materialize_intrinsic_snapshot
 from .proof_core_bridge import (
-    ProofCoreBridgeReport, proof_core_bridge_report, verify_proof_core_bridge_report,
+    ProofCoreBridgeReport, _guarded_lean_subprocess,
+    proof_core_bridge_report, verify_proof_core_bridge_report,
 )
 from .proof_core_codec import canonical_json
 from .proof_core_manifest import EXPECTED_LEAN_BINARY_SHA256
@@ -112,11 +113,11 @@ def _lean_command() -> list[str]:
         [elan, "which", "lean"], cwd=PROJECT_ROOT,
         text=True, capture_output=True, check=False,
     )
-    lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
     try:
+        lean_path = Path(resolved.stdout.strip()).resolve(strict=True) if resolved.returncode == 0 else Path()
         lean_bytes = lean_path.read_bytes() if lean_path.is_file() else b""
     except OSError:
-        lean_bytes = b""
+        lean_path, lean_bytes = Path(), b""
     if not lean_bytes or _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
         logger.error("intrinsic_mode_bridge pinned Lean content unavailable")
         return []
@@ -127,7 +128,9 @@ def _lean_command() -> list[str]:
 
 def _toolchain_identity(command: list[str]) -> str:
     logger.debug("intrinsic_mode_bridge._toolchain_identity entry")
-    proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+    proc = _guarded_lean_subprocess(
+        command + ["--version"], cwd=PROJECT_ROOT, timeout=30,
+    )
     version = (proc.stdout or proc.stderr).strip()
     match = re.fullmatch(r"Lean \(version ([^,\s)]+)(?:,.*)?\)", version)
     if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
@@ -186,10 +189,17 @@ def _compile(command: list[str], snapshot) -> tuple[bool, str]:
     diagnostics = []
     for index, (_, source) in enumerate(snapshot.paths, 1):
         output = [] if index == len(snapshot.paths) else ["-o", str(snapshot.output_dir / f"{source.stem}.olean")]
-        proc = subprocess.run(
-            command + ["-R", str(snapshot.root)] + output + [str(source)],
-            cwd=snapshot.root, env=env, text=True, capture_output=True, check=False,
-        )
+        try:
+            proc = _guarded_lean_subprocess(
+                command + ["-R", str(snapshot.root)] + output + [str(source)],
+                cwd=snapshot.root, env=env,
+            )
+        except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
+            logger.error(
+                "intrinsic_mode_bridge._compile guarded Lean blocked source=%s error=%s",
+                source.stem, exc,
+            )
+            return False, ";".join(diagnostics) + f":{source.stem}:execution-integrity:{exc}"
         combined = (proc.stderr or "") + (proc.stdout or "")
         diagnostics.append(f"{index}/{LEAN_STAGE_COUNT}:{source.stem}:rc={proc.returncode}")
         if proc.returncode or "warning:" in combined.lower():
