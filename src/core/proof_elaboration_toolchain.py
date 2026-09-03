@@ -26,6 +26,34 @@ _FIXED_RUNTIME = (
 )
 
 
+def default_runtime_absences(
+    object_filenames: tuple[str, ...],
+) -> tuple[Path, ...]:
+    """Return resolver/loader paths that must stay absent during Lean execution."""
+    logger.debug(
+        "default_runtime_absences entry object_filenames=%d",
+        len(object_filenames),
+    )
+    library = TOOLCHAIN_ROOT / "lib"
+    lean_library = TOOLCHAIN_ROOT / "lib/lean"
+    lean_names = (
+        "libInit_shared.so", "libleanshared.so", "libleanshared_1.so",
+        "libleanshared_2.so",
+    )
+    os_names = (
+        "libc.so.6", "libpthread.so.0", "libdl.so.2",
+        "libm.so.6", "librt.so.1",
+    )
+    result = tuple(lean_library / name for name in object_filenames) + (
+        library / "glibc-hwcaps",
+        lean_library / "glibc-hwcaps",
+        *(library / name for name in (*lean_names, *os_names)),
+        *(lean_library / name for name in os_names),
+    )
+    logger.debug("default_runtime_absences exit paths=%d", len(result))
+    return result
+
+
 def runtime_closure_paths() -> tuple[Path, ...]:
     """Enumerate launcher, native libraries, and every observed Init olean/IR input."""
     logger.debug("runtime_closure_paths entry root=%s", TOOLCHAIN_ROOT)
