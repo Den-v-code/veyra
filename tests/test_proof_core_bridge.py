@@ -1,6 +1,9 @@
 from dataclasses import replace
 from pathlib import Path
+import os
 import shutil
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -126,7 +129,7 @@ def test_unpinned_lean_fallback_is_not_accepted(monkeypatch):
 ])
 def test_pinned_version_match_is_exact(monkeypatch, version):
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
+        bridge_module, "_guarded_lean_subprocess",
         lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=version, stderr=""),
     )
     with pytest.raises(ValueError, match="pinned-lean-version-mismatch"):
@@ -162,13 +165,45 @@ def test_lean_command_rejects_unreviewed_compiler_content(tmp_path, monkeypatch)
     assert bridge_module._lean_command() == []
 
 
+def test_guarded_lean_subprocess_rejects_replace_then_restore(tmp_path, monkeypatch):
+    lean = tmp_path / "lean"
+    original = b"#!/usr/bin/env bash\nset -euo pipefail\nsleep 0.3\nexit 0\n"
+    lean.write_bytes(original)
+    lean.chmod(0o755)
+    hostile = tmp_path / "hostile"
+    hostile.write_bytes(b"#!/usr/bin/env bash\nexit 0\n")
+    hostile.chmod(0o755)
+    restore = tmp_path / "restore"
+    restore.write_bytes(original)
+    restore.chmod(0o755)
+    monkeypatch.setattr(
+        bridge_module, "EXPECTED_LEAN_BINARY_SHA256", bridge_module._sha(original),
+    )
+
+    def attack():
+        time.sleep(0.05)
+        os.replace(hostile, lean)
+        time.sleep(0.05)
+        os.replace(restore, lean)
+
+    attacker = threading.Thread(target=attack)
+    attacker.start()
+    with pytest.raises(ValueError, match="r10-runtime-integrity-drift"):
+        bridge_module._guarded_lean_subprocess(
+            [str(lean)], cwd=tmp_path, env=os.environ, timeout=5,
+        )
+    attacker.join(timeout=2)
+    assert not attacker.is_alive()
+    assert lean.read_bytes() == original
+
+
 def test_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
     monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", bridge_module._sha(lean.read_bytes()))
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
+        bridge_module, "_guarded_lean_subprocess",
         lambda command, **_kwargs: SimpleNamespace(returncode=0, stdout=version, stderr="")
         if command[-1] == "--version" else (_ for _ in ()).throw(AssertionError(command)),
     )
