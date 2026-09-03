@@ -1,0 +1,135 @@
+name: r7-r9-lean-execution-toctou-fix
+
+on:
+  push:
+    branches:
+      - verify/r7-r9-lean-execution-toctou-fix-v1
+
+permissions:
+  contents: read
+
+jobs:
+  focused:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - name: Checkout exact fix head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Den-v-code/veyra
+          ref: 641ecb5187d528cb8e5692a3edb592219d43ba56
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install focused tools
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check pytest==9.0.3 ruff==0.15.6
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Run focused static and hostile regressions
+        env:
+          PYTEST_DISABLE_PLUGIN_AUTOLOAD: "1"
+        run: |
+          set -euo pipefail
+          ruff check             src/core/proof_core_bridge.py             src/core/intrinsic_mode_bridge.py             tests/test_proof_core_bridge.py             tests/test_intrinsic_mode_bridge.py
+          pytest -q -p no:cacheprovider             tests/test_proof_core_bridge.py::test_guarded_lean_subprocess_rejects_replace_then_restore             tests/test_proof_core_bridge.py::test_lean_command_executes_resolved_content_pinned_binary             tests/test_proof_core_bridge.py::test_lean_command_rejects_unreviewed_compiler_content             tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_filesystem_metadata             tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_executes_resolved_content_pinned_binary             tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_rejects_unreviewed_compiler_content             tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata
+
+      - name: Install exact reviewed Lean
+        env:
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$archive" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$archive" | sha256sum --check --strict
+          root="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$root"
+          tar --zstd -xf "$archive" -C "$root"
+          lean="$root/lean-4.30.0-rc2-linux/bin/lean"
+          test "$(sha256sum "$lean" | cut -d' ' -f1)" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "OFFICIAL_LEAN=$lean" >> "$GITHUB_ENV"
+
+      - name: Prove pre-compile TOCTOU now blocks
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from unittest.mock import patch
+
+          import src.core.proof_core_bridge as bridge
+
+          official = Path(os.environ["OFFICIAL_LEAN"])
+          with TemporaryDirectory() as td:
+              root = Path(td)
+              fake_bin = root / "bin"
+              fake_bin.mkdir()
+              lean = root / "lean"
+              lean.write_bytes(official.read_bytes())
+              lean.chmod(0o755)
+              hostile = root / "hostile-lean"
+              hostile.write_text(
+                  "#!/usr/bin/env bash\n"
+                  "set -euo pipefail\n"
+                  "printf x >> \"$ATTACK_COUNT\"\n"
+                  "exit 0\n"
+              )
+              hostile.chmod(0o755)
+              count = root / "attack-count"
+              elan = fake_bin / "elan"
+              elan.write_text(
+                  "#!/usr/bin/env bash\n"
+                  "set -euo pipefail\n"
+                  "if [[ \"$#\" -eq 2 && \"$1\" == \"which\" && \"$2\" == \"lean\" ]]; then\n"
+                  "  printf '%s\\n' \"$LEAN_DIRECT\"\n"
+                  "  exit 0\n"
+                  "fi\n"
+                  "exit 91\n"
+              )
+              elan.chmod(0o755)
+              os.environ["PATH"] = str(fake_bin) + os.pathsep + os.environ["PATH"]
+              os.environ["LEAN_DIRECT"] = str(lean)
+              os.environ["ATTACK_COUNT"] = str(count)
+
+              build = root / "build"
+              original_materialize = bridge.materialize_lean_snapshot
+
+              def materialize_then_swap(*args, **kwargs):
+                  snapshot = original_materialize(*args, **kwargs)
+                  replacement = root / "replacement"
+                  replacement.write_bytes(hostile.read_bytes())
+                  replacement.chmod(0o755)
+                  os.replace(replacement, lean)
+                  return snapshot
+
+              with (
+                  patch.object(bridge, "BUILD_DIR", build),
+                  patch.object(bridge, "materialize_lean_snapshot", side_effect=materialize_then_swap),
+              ):
+                  report = bridge.check_proof_core_bridge()
+
+              calls = count.read_text() if count.exists() else ""
+              print("TOCTOU_FIX_STATUS", report.status)
+              print("TOCTOU_FIX_LEAN_CHECKED", report.lean_checked)
+              print("TOCTOU_FIX_DIAGNOSTICS", report.diagnostics)
+              print("TOCTOU_FIX_HOSTILE_CALLS", len(calls))
+
+              assert report.status == "blocked"
+              assert report.lean_checked is False
+              assert "pinned-lean-binary-digest-mismatch" in report.diagnostics
+              assert calls == ""
+          PY
+
+      - name: Attest exact source head unchanged
+        env:
+          TARGET_SHA: 641ecb5187d528cb8e5692a3edb592219d43ba56
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
