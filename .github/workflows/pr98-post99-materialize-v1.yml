@@ -1,0 +1,283 @@
+name: pr98-post99-materialize-v1
+
+on:
+  push:
+    branches:
+      - verify/pr98-post99-materialize-v1
+
+permissions:
+  contents: write
+
+jobs:
+  materialize-validate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 100
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: verify/pr98-post99-materialize-v1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Materialize exact post-99 candidate
+        env:
+          BASE_SHA: 3d711761488719e150af07e3443c894ac0fbde95
+          REVIEWED_SHA: a11fee75f9e4f803ce72b807f484eae407e8523f
+          TARGET_BRANCH: fix/current-tree-proof-reproducibility-execution-binding-post99-v1
+          EXPECTED_RESEARCH_MANIFEST_SHA256: 2a776e005df7d7bed83f04351f629db76deb34b6776a0795d4c111ec4337e26b
+        run: |
+          set -euo pipefail
+          git cat-file -e "$BASE_SHA^{commit}"
+          git cat-file -e "$REVIEWED_SHA^{commit}"
+          git switch --detach "$BASE_SHA"
+          git switch -c "$TARGET_BRANCH"
+
+          # These 19 files are byte-for-byte outputs already validated in the
+          # pre-#99 canonical fix and reproduced semantically by run 34036026448.
+          git checkout "$REVIEWED_SHA" -- \
+            proofs/lean/VeyraProofElaboration.lean \
+            src/core/intrinsic_mode_bridge.py \
+            src/core/intrinsic_mode_manifest.py \
+            src/core/intrinsic_observer_echo_evidence.py \
+            src/core/intrinsic_observer_echo_formal_manifest.py \
+            src/core/intrinsic_observer_echo_source.py \
+            src/core/intrinsic_observer_echo_theorem.py \
+            src/core/intrinsic_vam_formal_manifest.py \
+            src/core/layer_theorem_contract_handlers.py \
+            src/core/observer_core_bridge_io.py \
+            src/core/observer_core_manifest.py \
+            src/core/proof_core_bridge.py \
+            src/core/proof_core_manifest.py \
+            src/core/proof_elaboration_bridge_io.py \
+            src/core/proof_elaboration_manifest.py \
+            tests/test_intrinsic_mode_bridge.py \
+            tests/test_observer_core_bridge.py \
+            tests/test_proof_core_bridge.py \
+            tests/test_proof_elaboration_bridge.py
+
+          # Preserve #99's expanded 59-source inventory and renew only the two
+          # changed base-source rows plus aggregate roots.
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          EXPECTED = "2a776e005df7d7bed83f04351f629db76deb34b6776a0795d4c111ec4337e26b"
+
+          def domain_root(domain, rows):
+              digest = sha256()
+              for value in (domain, *rows):
+                  encoded = value.encode("utf-8")
+                  digest.update(len(encoded).to_bytes(8, "big"))
+                  digest.update(encoded)
+              return digest.hexdigest()
+
+          path = Path("experimental/research_lean/manifest.json")
+          raw = json.loads(path.read_text())
+          replacements = {
+              "proofs/lean/VeyraProofElaboration.lean": "3805eb0c16e7f3520acfb1cdfa2ba2bbe7c9db5bc4f07d9320172fdce75d6249",
+              "proofs/lean/VeyraProofModeTransport.lean": "3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2",
+          }
+          seen = set()
+          for row in raw["base_sources"]:
+              if row["path"] in replacements:
+                  row["sha256"] = replacements[row["path"]]
+                  seen.add(row["path"])
+          assert seen == set(replacements), (seen, replacements)
+
+          roots = {}
+          for group, key in (("base", "base_sources"), ("research", "research_sources")):
+              roots[group] = domain_root(
+                  f"veyra.research-lean.sources.v1:{group}",
+                  tuple(f"{row['path']}\0{row['sha256']}" for row in raw[key]),
+              )
+          raw["source_roots"] = roots
+          toolchain = raw["toolchain"]
+          claims = raw["headline_claims"]
+          closures = raw["axiom_closure"]
+          declarations = tuple(name for row in raw["research_sources"] for name in row["declarations"])
+          proof_rows = (
+              f"toolchain\0{toolchain['name']}\0{toolchain['version']}\0{toolchain['commit']}",
+              f"base\0{roots['base']}",
+              f"research\0{roots['research']}",
+              *(
+                  "claim\0" + name + "\0" + "\0".join((
+                      claims[name]["statement"],
+                      claims[name]["scope"],
+                      claims[name]["registry_relation"],
+                  ))
+                  for name in raw["headline_declarations"]
+              ),
+              *(f"axioms\0{name}\0{','.join(closures[name])}" for name in declarations),
+          )
+          raw["proof_root"] = domain_root("veyra.research-lean.proof.v1", tuple(proof_rows))
+          path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+
+          actual = sha256(path.read_bytes()).hexdigest()
+          print("MATERIALIZED_RESEARCH_ROOTS", roots)
+          print("MATERIALIZED_RESEARCH_PROOF_ROOT", raw["proof_root"])
+          print("MATERIALIZED_RESEARCH_MANIFEST_SHA256", actual)
+          assert roots == {
+              "base": "a1a116067b65485c3bee3c6da5022bc75b6803d6ab59fca6f1362787d1071467",
+              "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597",
+          }
+          assert raw["proof_root"] == "3140292ac531e4c1f3590dfe554fbb2686b6a7ead69a114214fd8a5a4541aee4"
+          assert actual == EXPECTED
+          PY
+
+          git diff --check
+          echo "MATERIALIZED_POST99_FILES"
+          git diff --name-only | sort
+
+          expected=(
+            experimental/research_lean/manifest.json
+            proofs/lean/VeyraProofElaboration.lean
+            src/core/intrinsic_mode_bridge.py
+            src/core/intrinsic_mode_manifest.py
+            src/core/intrinsic_observer_echo_evidence.py
+            src/core/intrinsic_observer_echo_formal_manifest.py
+            src/core/intrinsic_observer_echo_source.py
+            src/core/intrinsic_observer_echo_theorem.py
+            src/core/intrinsic_vam_formal_manifest.py
+            src/core/layer_theorem_contract_handlers.py
+            src/core/observer_core_bridge_io.py
+            src/core/observer_core_manifest.py
+            src/core/proof_core_bridge.py
+            src/core/proof_core_manifest.py
+            src/core/proof_elaboration_bridge_io.py
+            src/core/proof_elaboration_manifest.py
+            tests/test_intrinsic_mode_bridge.py
+            tests/test_observer_core_bridge.py
+            tests/test_proof_core_bridge.py
+            tests/test_proof_elaboration_bridge.py
+          )
+          mapfile -t actual < <(git diff --name-only | sort)
+          mapfile -t wanted < <(printf '%s\n' "${expected[@]}" | sort)
+          test "${#actual[@]}" -eq 20
+          diff -u <(printf '%s\n' "${wanted[@]}") <(printf '%s\n' "${actual[@]}")
+
+          # #99 already contains these exact derived outputs; they must not be
+          # reintroduced as noise in the post-99 candidate.
+          test -z "$(git diff --name-only -- proofs/lean/VeyraProofModeTransport.lean)"
+          test -z "$(git diff --name-only -- src/core/proof_elaboration_objects.py)"
+
+          git config user.name "Den-v-code"
+          git config user.email "contributors@veyra.invalid"
+          git add -- "${expected[@]}"
+          git diff --cached --check
+          git commit -m "fix(proofs): bind reproducible proof execution to reviewed Lean"
+          test "$(git rev-list --count "$BASE_SHA"..HEAD)" = 1
+          test "$(git diff --name-only "$BASE_SHA"..HEAD | wc -l)" -eq 20
+          echo "MATERIALIZED_CANDIDATE_SHA=$(git rev-parse HEAD)"
+
+      - name: Install exact elan and Lean runtime
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lean"
+          actual="$(sha256sum "$lean_bin" | cut -d' ' -f1)"
+          test "$actual" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "$(dirname "$lean_bin")" >> "$GITHUB_PATH"
+          echo "MATERIALIZED_REVIEWED_LEAN_SHA256=$actual"
+
+      - name: Focused execution-binding regressions
+        run: |
+          set -euo pipefail
+          pytest -q \
+            tests/test_proof_core_bridge.py::test_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_filesystem_metadata \
+            tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata \
+            tests/test_proof_elaboration_bridge.py::test_r10_toolchain_identity_excludes_host_local_metadata \
+            tests/test_observer_core_bridge.py::test_r11_toolchain_identity_excludes_host_local_metadata
+
+      - name: Final replay smoke on exact candidate
+        run: |
+          python - <<'PY'
+          from src.core.intrinsic_mode_bridge import intrinsic_mode_bridge_report
+          from src.core.proof_elaboration_bridge import proof_elaboration_bridge_report
+          from src.core.observer_core_bridge import observer_core_bridge_report
+          from src.core.intrinsic_vam_formal_bridge import intrinsic_vam_formal_bridge_report
+          from src.core.intrinsic_observer_echo_formal_bridge import intrinsic_observer_echo_formal_bridge_report
+          from src.core.intrinsic_observer_echo_theorem import intrinsic_observer_echo_theorem
+          from src.core.layer_theorem_contracts import theorem_contract_registry, theorem_contract_digest
+
+          reports = [
+              intrinsic_mode_bridge_report(),
+              proof_elaboration_bridge_report(),
+              observer_core_bridge_report(),
+              intrinsic_vam_formal_bridge_report(),
+              intrinsic_observer_echo_formal_bridge_report(),
+          ]
+          expected = [
+              "6470d19bd61f4298342f37e04c26e21eed9e7f0bc1587647a3f24f67a9702b20",
+              "2da4ccb582a51b7edd21d305ba1da4226f7ca127febc2358a12b5af8f9538b7c",
+              "7635a58d200121bddd317ecb73eadbf0f726cbc79de4911f1ab173554c1da0a6",
+              "b69fa1066722e638818791037d3f3db8023c410baac372faa59e321ef0ae3ba3",
+              "a934b771d456d48eb0ba0d4db2d1c2bbdd638de19476730e15363ed23bc5cdf2",
+          ]
+          for report, binding in zip(reports, expected, strict=True):
+              print("MATERIALIZED_REPORT", type(report).__name__, report.status, report.binding_digest)
+              assert report.status == "checked", report.diagnostics
+              assert report.binding_digest == binding
+          theorem = intrinsic_observer_echo_theorem()
+          assert theorem.artifact_digest == "b3b7bb47436af8e0f11885ec3d87c72c0db75e5726fd2a496fc7b77fa4e5f3d8"
+          registry = theorem_contract_registry()
+          contracts = {key: theorem_contract_digest(value) for key, value in registry.items()}
+          print("MATERIALIZED_THEOREM", theorem.artifact_digest)
+          print("MATERIALIZED_CONTRACTS", contracts)
+          assert contracts["intrinsic-observer-echo"] == "d617162a3badc48410d54398571186213c2ee04652960c22aa6e4aaf2a2aee7d"
+          PY
+
+      - name: Research checker on exact candidate
+        run: python scripts/check_research_lean.py --jobs 8
+
+      - name: Final ancestry and cleanliness
+        env:
+          BASE_SHA: 3d711761488719e150af07e3443c894ac0fbde95
+        run: |
+          set -euo pipefail
+          test "$(git rev-list --count "$BASE_SHA"..HEAD)" = 1
+          test "$(git diff --name-only "$BASE_SHA"..HEAD | wc -l)" -eq 20
+          git diff "$BASE_SHA"..HEAD --check
+          test -z "$(git status --porcelain)"
+          echo "FINAL_MATERIALIZED_SHA=$(git rev-parse HEAD)"
+          git diff --stat "$BASE_SHA"..HEAD
+
+      - name: Publish validated candidate
+        env:
+          TARGET_BRANCH: fix/current-tree-proof-reproducibility-execution-binding-post99-v1
+        run: |
+          set -euo pipefail
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
