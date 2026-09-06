@@ -1,13 +1,20 @@
 """Necklace congruence probes: arithmetic from counting rotation orbits.
 
-Boundary: the counting side is native — orbits are collected through
+Boundary: the counting side is orbit-based — orbits are collected through
 `native_number.cycle_echo` rotation orbits over concrete mode presentations,
-and every divisibility fact is witnessed by an exact orbit partition, not by
-`%` on opaque totals. The Möbius column is a declared school shadow
-(docs/06 §3 license) used only as an external cross-check of the native
-counts; it decides nothing. Witness statuses use `witnessed`/`blocked`,
-never `proved` (CONTRIBUTING claim rules). General statements remain
-EXECUTABLE_EVIDENCE for the exact bounded rows; see
+totals are read off the partition itself (sum of orbit sizes), and every
+divisibility fact is witnessed by an exact orbit partition, not by `%` on
+opaque totals. The prime-length precondition of the dichotomy/Fermat witnesses
+is decided natively by `resonance_arithmetic.resonance_prime_witness`
+(structural trial division on the unary recurrence); the one declared host
+gate is that orbit sizes are host `len` of the rotation set (docs/06 §3
+shadow license). The Möbius column is a declared school shadow
+used only as an external cross-check of the orbit counts; it is reported in
+`shadow_match` and never decides a witness status. Witness statuses use
+`witnessed`/`blocked`, never `proved` (CONTRIBUTING claim rules). General
+statements remain EXECUTABLE_EVIDENCE for the exact bounded rows; the
+all-prime/all-alphabet forms are formal theorems in
+`proofs/lean/VeyraNecklaceOrbit.lean`; see
 `docs/179_necklace_congruence_n8.md`.
 """
 
@@ -19,9 +26,11 @@ from typing import Iterable
 
 from .modes import Mode, enumerate_modes, is_ordered_primitive
 from .native_number import CycleEcho, cycle_echo
-from .primes import is_prime_int
+from .resonance_arithmetic import default_anchor, resonance_prime_witness, unary
 
 logger = logging.getLogger(__name__)
+
+SHADOW_LICENSED = ("mobius_shadow_value", "_mobius_primitive_shadow")
 
 
 @dataclass(frozen=True)
@@ -118,13 +127,13 @@ def orbit_dichotomy_witness(alphabet: Iterable[str], length: int) -> OrbitDichot
     logger.debug("orbit_dichotomy_witness entry length=%d", length)
     symbols = tuple(alphabet)
     rows = rotation_orbit_rows(symbols, length)
-    total = len(symbols) ** length
-    constant = sum(1 for row in rows if row.constant)
-    nonconstant = total - constant
+    total = sum(row.orbit_size for row in rows)
+    constant = sum(row.orbit_size for row in rows if row.constant)
+    nonconstant = sum(row.orbit_size for row in rows if not row.constant)
     sizes = tuple(sorted({row.orbit_size for row in rows}))
     offending = next((row.representative for row in rows if row.orbit_size not in (1, length)), "")
     dichotomy = offending == "" and all(row.orbit_size == (1 if row.constant else length) for row in rows)
-    if not is_prime_int(length):
+    if not resonance_prime_witness(default_anchor(), unary(default_anchor(), length)).prime:
         result = OrbitDichotomyWitness(length, len(symbols), total, constant, nonconstant, sizes, dichotomy, offending, "blocked", "nonprime-length")
         logger.error("orbit_dichotomy_witness blocked result=%r", result)
         return result
@@ -212,12 +221,14 @@ def gauss_congruence_witness(alphabet: Iterable[str], length: int) -> GaussCongr
     divisibility = all_full and count == orbit_count * length
     shadow = _mobius_primitive_shadow(length, len(symbols))
     match = shadow == count
-    if not (all_full and divisibility and match):
-        obstruction = "orbit-not-full" if not all_full else "divisibility-failure" if not divisibility else "shadow-mismatch"
+    if not match:
+        logger.error("gauss_congruence_witness shadow mismatch length=%d shadow=%d count=%d", length, shadow, count)
+    if not (all_full and divisibility):
+        obstruction = "orbit-not-full" if not all_full else "divisibility-failure"
         result = GaussCongruenceWitness(length, len(symbols), count, all_full, divisibility, shadow, match, "blocked", obstruction)
         logger.error("gauss_congruence_witness blocked result=%r", result)
         return result
-    result = GaussCongruenceWitness(length, len(symbols), count, True, True, shadow, True, "witnessed", "none")
+    result = GaussCongruenceWitness(length, len(symbols), count, True, True, shadow, match, "witnessed", "none")
     logger.debug("gauss_congruence_witness exit result=%r", result)
     return result
 
@@ -227,10 +238,10 @@ def necklace_congruence_checklist() -> tuple[str, ...]:
     logger.debug("necklace_congruence_checklist entry")
     result = (
         "orbits are collected natively through cycle_echo, never through a canonical cut",
-        "prime-length dichotomy is witnessed orbit-by-orbit with an explicit counterexample slot",
-        "the Fermat count is an exact partition into full orbits, not a remainder check",
-        "the Gauss divisibility is carried by full primitive orbits; the Möbius column is a labeled school shadow",
-        "witness statuses are witnessed/blocked; nothing here is proved",
+        "prime-length dichotomy is witnessed orbit-by-orbit with an explicit counterexample slot; the prime-length precondition is the native resonance-prime witness",
+        "the Fermat count is an exact partition into full orbits, not a remainder check; totals are sums of orbit sizes",
+        "the Gauss divisibility is carried by full primitive orbits; the Möbius column is a labeled school shadow that never decides a status",
+        "witness statuses are witnessed/blocked; nothing here is proved — the general theorems live in VeyraNecklaceOrbit.lean",
     )
     logger.debug("necklace_congruence_checklist exit count=%d", len(result))
     return result

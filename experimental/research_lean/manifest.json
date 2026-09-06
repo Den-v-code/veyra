@@ -125,6 +125,14 @@
       "declarations": []
     },
     {
+      "path": "proofs/lean/VeyraNecklaceOrbit.lean",
+      "sha256": "ed4e7f6e974bfe156ee8e6bcab97a4ab53fa6899c70e2ba99adafb32ae93ad61",
+      "imports": [
+        "VeyraPrimitiveRoot"
+      ],
+      "declarations": []
+    },
+    {
       "path": "proofs/lean/VeyraObserverCore.lean",
       "sha256": "fef5db4a94f40b7ba478c5e9d28c5680f736672d5caaea5ac97a823d3e2359d2",
       "imports": [
@@ -156,6 +164,14 @@
       "imports": [
         "VeyraObserverCore",
         "VeyraProofSoundness"
+      ],
+      "declarations": []
+    },
+    {
+      "path": "proofs/lean/VeyraObserverSite.lean",
+      "sha256": "2f231f92b9b01a6db78f7755f1b976f97bd8c43a210cae866510de1c6ea20912",
+      "imports": [
+        "VeyraPrimitiveRoot"
       ],
       "declarations": []
     },
@@ -217,6 +233,14 @@
       "imports": [
         "Std.Tactic",
         "Init.GrindInstances.Ring.Fin"
+      ],
+      "declarations": []
+    },
+    {
+      "path": "proofs/lean/VeyraPadicDomain.lean",
+      "sha256": "52104ea86ed63da080aae79f6cd3f03b366f8c0239351cc22e79fbd4d9fcf659",
+      "imports": [
+        "VeyraPadicCompletion"
       ],
       "declarations": []
     },
@@ -285,6 +309,12 @@
       "declarations": []
     },
     {
+      "path": "proofs/lean/VeyraPrimitiveRoot.lean",
+      "sha256": "b70f75584e5b5bbbc6059debfe83cd003f1b59dcc5a748724f042b4efa10b243",
+      "imports": [],
+      "declarations": []
+    },
+    {
       "path": "proofs/lean/VeyraProbability.lean",
       "sha256": "b41611ae5d42575211526fd3e9c7fa97b97eb9ab6c47e9b3f2b2dbc8b5f03542",
       "imports": [],
@@ -306,7 +336,7 @@
     },
     {
       "path": "proofs/lean/VeyraProofElaboration.lean",
-      "sha256": "52269d4c9839b7178200e0a8e86acd4df6348302e457745eb86e58439feb265f",
+      "sha256": "d7c23b7b7c9a8a2e4c47436631fdb3818debf734f0e7f0ea5d4adffad5fcc34b",
       "imports": [
         "VeyraElaborationSemantics"
       ],
@@ -322,7 +352,7 @@
     },
     {
       "path": "proofs/lean/VeyraProofModeTransport.lean",
-      "sha256": "d9ac930c119f3126a858bf286bee32f4d5b9a3ac3fe8cb297316d9cc10dbcc26",
+      "sha256": "3d9af0918dcffa3730193c36c5bbc705bc28c507b28291c7f9ef0d21c32335a2",
       "imports": [
         "VeyraProofResonance",
         "VeyraRecurrenceModeBridge"
@@ -367,6 +397,15 @@
       "declarations": []
     },
     {
+      "path": "proofs/lean/VeyraResonanceArithmetic.lean",
+      "sha256": "3b6b1ba57419d18e41f84bdb338f3d73abb32a82f3def81077f130f06a7ab687",
+      "imports": [
+        "VeyraNativeArithmetic",
+        "VeyraNecklaceOrbit"
+      ],
+      "declarations": []
+    },
+    {
       "path": "proofs/lean/VeyraStatistics.lean",
       "sha256": "4e39dea022ec7b268e1a6bb52bda34acc0a7b40d02d730a73570cf60bba006f0",
       "imports": [],
@@ -383,6 +422,15 @@
       "sha256": "4804c5637e89530a4a00ec6ad905c20d0a93c2b63fb941f1cffc70d7a3c7e395",
       "imports": [
         "Std.Tactic"
+      ],
+      "declarations": []
+    },
+    {
+      "path": "proofs/lean/VeyraVariableArithmetic.lean",
+      "sha256": "fde185a0558bdb4271bc2d4df53a6f2ec7c4270571beeb7b7fbf75fac5fafc0b",
+      "imports": [
+        "VeyraObserverSite",
+        "VeyraNecklaceOrbit"
       ],
       "declarations": []
     }
@@ -1043,8 +1091,8 @@
     ]
   },
   "source_roots": {
-    "base": "4c0722a4fda5cd164cc5bb71acbc87d18b5e85014fb28d46dc017cc0b841628b",
+    "base": "38c90eb03d0c2502386bbae699ed561015720b26c0c861a8167b511926689052",
     "research": "caf7d1c2e0e7e8333132300a0ebe5099e35b4fb70d47033fcc8bf033f4c9f597"
   },
-  "proof_root": "dc991bf17da44eb4691ebd236cd9f40a4024caec589735aa16be378baccce509"
+  "proof_root": "4b93d54a0543dbce6c40d60183e1623484ff3555f75ec4ae8708bd30c5f08ee5"
 }

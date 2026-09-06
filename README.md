@@ -28,6 +28,12 @@ vocabulary is:
 - **mode** — a closed breath, interpreted as recurrence returning to its
   boundary.
 
+On finite observer sites these refusals have exact forms: distinction persists
+and echo retracts, excluded middle for equality fails at incomplete stages, and
+the natural numbers are the length fibre of the presheaf of modes
+([`docs/190`](docs/190_observer_site_internal_logic.md),
+[`docs/191`](docs/191_variable_arithmetic.md)).
+
 Arithmetic first appears through conservative finite shadows of closed modes.
 These shadows provide a consistency anchor; they do not establish that all
 mathematics reduces to Veyra.
@@ -239,7 +245,14 @@ indexing, and the non-claim registry: a discipline over host mathematics, not a
 replacement computation. Native layers reduce this dependence where documented
 (orbit-based cycle identity, structural stitch/weave), and a claim that a layer
 *derives* rather than *transports* arithmetic is admissible only with its exact
-registered bridge.
+registered bridge. For the one-tact number-theory layer that bridge now exists
+and is guarded: divisibility, phase congruence, indecomposable rhythms, shared
+echo/closure, Fermat and Euclid are native definitions with executable witnesses
+and machine-checked theorems on the native recurrence
+(`docs/189_resonance_arithmetic.md`), and an AST test keeps host `%`, `pow`,
+`gcd` and `is_prime_int` off every number-theory decision path; the length
+observer that connects the two sides is itself proved to be a bijective
+stitch/weave homomorphism onto `Nat` (`THM_RA_001`–`003`).
 
 Passing tests does not promote a candidate. A statement changes status only
 through an explicit registry entry with its dependencies and non-claims.
@@ -266,7 +279,10 @@ The conceptual boundary is documented in
 ## Contributing
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for setup, claim discipline, test
-expectations, and review requirements. Please use
+expectations, and review requirements. The repository, its documentation,
+commit history and file names carry no references to AI assistants or
+automated-authorship attribution; `make hygiene` enforces this on every
+tracked text file and path (see "Attribution" in `CONTRIBUTING.md`). Please use
 [`SECURITY.md`](SECURITY.md) for vulnerability reports and
 [`CODE_OF_CONDUCT.md`](CODE_OF_CONDUCT.md) for community expectations.
 

@@ -15,13 +15,38 @@ an explicit non-claim boundary.
 
 ## Experimental research candidate
 
-`experimental/research_lean/` is separate from the stable 53-source inventory.
+`experimental/research_lean/` is separate from the stable 59-source inventory.
 Its manifest binds nine sources, 86 declarations (40 headlines), imports,
 digests, exact Lean `4.30.0-rc2` commit, and every printed axiom closure.
 `make research-lean` verifies a fresh temporary snapshot. It does not promote
 stable IDs: THM-001–003 remain conjectures and W-001 remains unpromoted. The
 one-tact bridge covers only the explicit singleton-generated path-word
-realization and exact R9 image; number theory remains classical local `Nat`/`Int`.
+realization and exact R9 image; its number theory is classical local `Nat`/`Int`.
+- Stable general number theory (2026-09-03, `FORMALLY_PROVED`, not
+  `PUBLICLY_VALIDATED`): `VeyraNecklaceOrbit.lean` (Fermat by orbit counting
+  for all primes/bases and the Gauss divisibility `n ∣ #aperiodic(k, n)` at
+  every positive length with aperiodic ⇔ primitive, `THM_NO_001`–`011`), `VeyraPrimitiveRoot.lean`
+  (Lyndon–Schützenberger, unique primitive root, `THM_RT_001`–`004`),
+  `VeyraPadicDomain.lean` (`ZpVeyra(p)` has no zero divisors; first
+  primality-consuming PΩ2 theorem, `THM_PD_001`–`003`, the last classical).
+  See `docs/188_general_number_theory_lean.md`.
+- Resonance arithmetic (2026-09-06, `FORMALLY_PROVED`, not `PUBLICLY_VALIDATED`):
+  `VeyraResonanceArithmetic.lean` states divisibility, phase congruence,
+  resonance primes, gcd/lcm, Fermat and Euclid in the docs/02 vocabulary on the
+  native `Recurrence` (`THM_RA_001`–`014`); see `docs/189_resonance_arithmetic.md`.
+- Observer site (2026-09-06, `FORMALLY_PROVED`, not `PUBLICLY_VALIDATED`):
+  `VeyraObserverSite.lean` proves that distinctions persist and echo retracts
+  under refinement, that excluded middle for equality fails at incomplete
+  stages and holds at complete ones, that typed silence breaks cotransitivity
+  and transitivity of internal equality, and that stage-primitivity is
+  monotone (`THM_OS_001`–`019`); see `docs/190_observer_site_internal_logic.md`.
+- Variable arithmetic (2026-09-06, `FORMALLY_PROVED`, not `PUBLICLY_VALIDATED`):
+  `VeyraVariableArithmetic.lean` proves that stitch and weave act on the
+  fibres of the presheaf of modes where echo is a congruence and commute with
+  restriction, that the natural numbers are the length fibre, that
+  commutativity and left distributivity are stage properties, that closed
+  modes have no native stitch, and that AX-005 fails for canonical-cut
+  stitching (`THM_VA_001`–`014`); see `docs/191_variable_arithmetic.md`.
 - `VeyraObserverSynthesisReplay.lean` is an `INTERNAL_RESEARCH_CANDIDATE`
   abstract slice: it proves functional replay determinism/sound acceptance,
   pointwise target preservation under an explicitly supplied bijective

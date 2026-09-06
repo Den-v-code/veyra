@@ -43,6 +43,22 @@ Part of the public [Theorem and Definition Registry](../../THEOREMS.md).
 | THM-002 | Stitch-addition shadow | `⊕` shadows ordinary addition on `N`. | THM-001 | conjectured theorem |
 | THM-003 | Weave-multiplication shadow | `⊗` shadows ordinary multiplication on `N`. | THM-001 | conjectured theorem |
 
+> **Status reconciliation (2026-09-03).** The 0.3.0 table below records
+> W-001/THM-001–003 as "proved in external shadow draft" / "theorem in
+> external shadow model", while this table, `THEOREMS.md` and the formal
+> evidence index keep them `CONJECTURE`. Both are right about different
+> objects: for the *word shadow* (`modes.Mode`, one-letter words) the
+> statements are elementary and the research-Lean one-tact bridge checks
+> `List Unit ≅ ℕ` transported through the R9 encoding; for the *native*
+> Mode of AX-001–007, whose Core-0 axioms have no Lean formalization, no
+> isomorphism claim is established. The registry status of record is
+> `CONJECTURE` for the native claim; the 0.3.0 rows are historical and
+> refer to the shadow model only. Since 2026-09-06 the Lean `Recurrence`
+> version of the statement is a stable theorem: `THM_RA_001`–`003`
+> (`VeyraResonanceArithmetic.lean`) prove that the one-tact length observer is
+> a bijection carrying stitch to `+` and weave to `×`; this concerns the R9
+> image type, not the AX-007 `Mode`, so the rows above stay as they are.
+
 ## Conjectures
 
 | ID | Type | Statement | Status |

@@ -1,6 +1,160 @@
 # Changelog
 
 ## [Unreleased] — Changed
+- Variable arithmetic (2026-09-06): step 2 of the observer-site program. New
+  stable Lean source `VeyraVariableArithmetic.lean` (59th; imports
+  `VeyraObserverSite` and `VeyraNecklaceOrbit`, `THM_VA_001`–`014`, no
+  classical choice): the fibre of the presheaf of modes at a stage is the
+  `Quot` by echo with restriction along refinement; stitch and weave act on a
+  fibre exactly where echo is a congruence and then commute with restriction;
+  the natural numbers are the length fibre (stitch `+`, weave `×`); descent
+  holds at the length, bag and word stages while stitch does not respect
+  cyclic echo (closed modes have no native stitch) and weave does;
+  commutativity of stitch is a bag-stage law retracted at the word stage,
+  commutativity of weave survives only at the length stage, left
+  distributivity holds at the bag stage and fails at the word stage, right
+  distributivity and associativity are literal; AX-005 fails for stitching
+  closed modes through canonical cuts (countermodel `a`, `b`, `ab`);
+  bag-stage primitivity is coprimality of letter counts; resonance retracts
+  under refinement and is divisibility at the length stage. Executable twin
+  `src/core/observer_arithmetic.py` (descent/law tables with witnesses,
+  restriction squares, length fibre, canonical-cut failures, Parikh
+  cross-check as a declared shadow) with certificate `observer_arithmetic_va`
+  (suite 112→113), `tests/test_observer_arithmetic.py` in the portable lane,
+  both observer-site modules added to the host-arithmetic AST guard; docs 191
+  with pointers from 01/02/190, registry DEF-765–768, research manifest
+  rebased to the 59-source inventory.
+- Observer site (2026-09-06): the third inversion made formal and executable.
+  New stable Lean source `VeyraObserverSite.lean` (58th; imports
+  `VeyraPrimitiveRoot`, `THM_OS_001`–`019`, no classical choice): on finite
+  sites of partial observers, distinctions persist and echo retracts under
+  refinement; the pair status is three-valued (echo/apart/silent); apartness
+  is irreflexive, symmetric and cotransitive for total observers, while one
+  silent observer breaks cotransitivity and the transitivity of internal
+  equality (finite countermodel); excluded middle for equality fails at an
+  incomplete stage (`ab`/`ba` at `{length}`) and holds at the complete
+  stage; apartness truth values are up-closed sieves while echo's are not
+  (echo is "not yet apart", not an internal proposition); stage echo is a
+  partial equivalence relation on readable presentations; stage-primitivity
+  is monotone under refinement, literal primitivity at `{word}`, unit-only at
+  `{length}`, and `aba` is composite at `{length}` but primitive at `{word}`.
+  Executable twin `src/core/observer_site.py` (standard site
+  length/bag/cycle/word, bounded partial reader, lattice law reports,
+  undecided pairs, echo classes with restriction, primitivity tables) with
+  certificate `observer_site_os` (suite 111→112) and `tests/test_observer_site.py`
+  in the portable lane; docs 190 with pointers from 00/06/11/149, registry
+  DEF-761–764, research manifest rebased to the 58-source inventory.
+- Attribution-free tree as a maintained invariant: `make hygiene` gains a fifth
+  stage that scans every tracked text file and every tracked path for
+  assistant-attribution tokens (assembled in the checker, never spelled), and
+  `tests/test_project_hygiene_attribution.py` checks the invariant and the
+  detector in the test lane; documented in `CONTRIBUTING.md` ("Attribution")
+  and the README.
+- Resonance arithmetic (2026-09-06): the docs/02 vocabulary is now executable
+  and formal. New `src/core/resonance_arithmetic.py` decides divisibility
+  (`resonates`), phase congruence (`phase_residual`/`phase_congruent`),
+  indecomposable rhythms (`resonance_prime_witness`), strongest shared echo and
+  smallest shared closure (`shared_echo`/`shared_closure`), native modular
+  powers and orbits (`phase_power`/`phase_orbit_length`), Fermat and Euclid
+  witnesses — all through `structural_divide`/`stitch`/`weave` on intrinsic
+  recurrences, with host integers entering only through the declared
+  `unary`/`length` transport. The N2 Fermat rows and the N8 prime-length gate
+  now use these native decisions (host `pow`/`is_prime_int` remain only as
+  declared shadows and an above-limit fallback that says so). A permanent AST
+  guard (`tests/test_resonance_decision_paths.py`) rejects `%`, `//`, `**`,
+  `pow`, `gcd`, `divmod`, `is_prime_int` on decision paths of every
+  number-theory lane outside each module's declared `SHADOW_LICENSED` list.
+  New stable Lean source `VeyraResonanceArithmetic.lean` (57th; imports
+  `VeyraNativeArithmetic` and `VeyraNecklaceOrbit`, `THM_RA_001`–`014`): the
+  one-tact length observer is a bijective stitch/weave homomorphism onto `Nat`;
+  weave laws; resonance is the divisibility order; structural division with
+  uniqueness; phase congruence characterized and shown compatible with stitch
+  and weave; resonance primes = primes; Fermat (`rpow k p ≡_p k`) and Euclid
+  (a resonance prime outside any finite list) in the vocabulary; gcd/lcm
+  universal properties. Certificate `resonance_arithmetic_ra` (suite 110→111),
+  Sage oracle lane `resonance-arithmetic` (8 lanes, 11,254 checks, 0
+  mismatches), docs 02/11/106/107/188/189, registry DEF-757–760.
+- Renewed the content-bound R9→R13 trust chain (2026-09-05), which had been
+  drifting locally since 2026-08-15/27 (`r9-generated-lean-source-drift` →
+  `layer-theorem-bridge-rejected`, visible only where the pinned Lean
+  toolchain is installed). Reviewed causes, none semantic: `proof_core_codec.py`
+  formatting-only reflow (#62), `native_runtime.py` three boundary docstrings
+  and `intrinsic_arithmetic.py` status token `proved`→`witnessed` (#87).
+  Renewal, bottom-up through fresh guarded Lean compilation with the pinned
+  4.30.0-rc2 toolchain: R9 export `VeyraProofModeTransport.lean` regenerated
+  and its manifest rows re-pinned (binding
+  `82f335531e198615fbcf0b40294489f14db64aa3a2a2e1c0148f74ada2c82b63`); R10
+  export `VeyraProofElaboration.lean` regenerated, manifest and the
+  `lean_r9_export` object row re-pinned (binding
+  `409e7549c36aaf23aae103dd350fea05ae0a75d9d24e97ff2be1ccf8661bab22`); R11
+  manifest re-pinned (binding
+  `24100cdd889f3abb435fe2654967d2d6b86bc80ae268ae4ef29d47f7b95e12e2`); R12.5
+  manifest, snapshot and binding re-pinned (binding
+  `86c2abd30b6c6388632190f79be29bb22cf619aa047baa2d7d5b647044c23b0b`); R13
+  source/evidence/theorem artifacts and formal manifest re-pinned (phase
+  artifact `a6622f425e5a7073d7686b6c4c21aa35a59a146712252b59498103b46715f49a`,
+  theorem artifact
+  `f1847d8a85d1b298fc4caa97e486abe8f4d5c51fe0fabdbbd3ebd414624f10fe`, binding
+  `db5b22a282d2118be0fd08d25e9c12e8f4aa8530ecff9c284cd2f21dbf9af79c`) and the
+  R13 trusted contract digest in `layer_theorem_contract_handlers.py`. No
+  theorem statement, object manifest, taxonomy, or promotion count changed;
+  all Lean object records except the regenerated R9 export olean are
+  byte-identical. Docs 102/127/137/139 carry dated "renewed" rows beside the
+  historical values. Local evidence: `layer_derivation_report()` with every
+  bridge `checked` and both theorem layers `ready`; 336/336 bridge, contract,
+  derivation, certificate and Sage-certificate tests passed in one process.
+- Number-theory review remediation (2026-09-03). Fixed four claim/code
+  contradictions found by a critical review: DI-2 now decides the cyclic
+  period structurally (least shift whose unary length divides the word length
+  under `structural_divide` and whose rotation echoes the word) instead of
+  `modes.primitive_root`, so "`%` appears in no decision path" is true; the
+  N8 Möbius shadow is reported in `shadow_match` and no longer flips the Gauss
+  witness status, and dichotomy totals are sums of orbit sizes; N2 Fermat
+  rows no longer pre-filter composite periods (they are computed and blocked
+  on an exhibited failing unit, including the Carmichael period 561) and the
+  vacuous "orbit coverage" condition is replaced by Lagrange/cyclicity
+  pressure; DI-1 replays uniformity to the deepest probed depth (a step that
+  leaked the anchor name only from depth 3 on was previously licensed to
+  depth 12) with a shipped late-peek control. TR-2: the Lemma-A check now
+  tests `F_k` for the candidate's own exponent, the refutation witness is
+  additionally confirmed by projection-free BFS at 18 letters in the
+  certificate (cap 20,000; the docs previously said this "exceeds the caps"),
+  "Principality ⇔ Achievability" is corrected to "Forced locus ⇔
+  Achievability", "discovery" wording is removed, and doc 187 states the
+  formula in its gcd form as a corollary of Duboc's theorem. Registry: the
+  formal-evidence index gains a definitional-content annotation, corrected
+  `THM_P3N2_003/004` dependency rows and +1 line references for three files;
+  the core registry reconciles the W-001/THM-001–003 status conflict;
+  BM-F005 cites the Lean file that actually contains `THM_F002`; docs 102,
+  106, 107, 153, 179–181, 183–185 are corrected in place with dated notes.
+- Added three stable Lean sources (54th–56th; inventory 53→56 across the
+  checker, tests, package smoke, Makefile, READMEs and the research manifest
+  with recomputed roots): `VeyraNecklaceOrbit.lean` (Fermat by orbit counting
+  for all primes and bases, `THM_NO_001`–`009`), `VeyraPrimitiveRoot.lean`
+  (Lyndon–Schützenberger and unique primitive roots, `THM_RT_001`–`004`) and
+  `VeyraPadicDomain.lean` (`ZpVeyra(p)` has no zero divisors — the first
+  theorem consuming `VeyraPrimeWitness.no_proper_divisor`, `THM_PD_001`–
+  `003`). All are `FORMALLY_PROVED`, Mathlib-free, not `PUBLICLY_VALIDATED`,
+  and promote no native claim. Registered as DEF-754–756 with doc 188.
+  Extended 2026-09-05 with `THM_NO_010` (Gauss divisibility: the aperiodic
+  words of every positive length `n` over every alphabet split into full
+  rotation orbits, so `n` divides their number) and `THM_NO_011` (aperiodic ⇔
+  primitive, via the gcd stabilizer and the power-of-prefix lemma; the file
+  now imports `VeyraPrimitiveRoot`), closing the composite-length `OPEN` row of
+  doc 179; the Möbius count identity itself stays `OPEN`.
+- Added the real-Sage number-theory oracle `veyra_sage.number_theory_oracle`
+  (`NumberTheoryOracleRow`, `VeyraNumberTheoryOracleLab`,
+  `number_theory_oracle_rows`, `number_theory_oracle_summary`; public Sage
+  surface 99→103). Seven lanes re-derive the N8/N2/TR-2/PΩ2/primitive-root
+  claims with independent SageMath 10.7 primitives (`LyndonWords`, `moebius`,
+  `Word.primitive`, `Zp` valuations, `multiplicative_order`, `primitive_root`,
+  `power_mod`) and compare exactly: 8,841 checks, 0 mismatches. Without real
+  Sage the oracle fails closed with a typed `unavailable` record; it is wired
+  into `scripts/sage_smoke.py` (mandatory under `--require-sage`) and covered
+  by a new test module. The Sage number-theory lab summary now reports
+  `fermat_units=21` because blocked composite N2 rows carry their units and
+  failing residues (pins updated in the Sage certificate suite, tests, docs 98
+  and 107).
 - Fixed source-distribution smoke validation for archives that place an
   explicit canonical directory entry after files beneath that directory. This
   ordering is now accepted without relaxing exact duplicate, file/ancestor,

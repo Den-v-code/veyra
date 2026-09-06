@@ -331,8 +331,11 @@ decided through class members via the cut-free primitive root, with the
 power exhibit recorded (737); edge transfer rows whose break carries the
 Ω exhibit verified to live outside the fine class, with the abstract
 monotone spine `THM-TR1-001`–`004` `FORMALLY_PROVED` in
-`VeyraObserverLattice.lean` — coarse-primitive implies fine-primitive
-(738); and the fragility spectrum with its exact first-break edge — the
+`VeyraObserverLattice.lean` — the Lean statements are about an arbitrary
+relation and predicate (reflexive-transitive closure is monotone in the
+relation); "coarse-primitive implies fine-primitive" is their prose
+reading in the trace-monoid model, not a formalized statement about
+words or doctrines (738); and the fragility spectrum with its exact first-break edge — the
 flagship `aabbcc` cell breaks exactly on the `bc` edge with exhibit
 `abcabc = (abc)²` (739). Classical trace theory is credited; the lane is
 `INTERNAL_RESEARCH_CANDIDATE`, rows are `EXECUTABLE_EVIDENCE`, and TR-2
@@ -365,8 +368,9 @@ homomorphism and the projection of a power is a power (`FORMALLY_PROVED`,
 real induction, `VeyraProjectionPower.lean`) (744); prime reduction via
 `THM-TR2-004/005` — power addition and divisor laws, so minimal deltas
 live at prime exponents and floors are divisibility-monotone
-(`FORMALLY_PROVED`) (745); the single-prime reduction *Principality ⇔
-Achievability* — prose-derived from 744/745 plus minimality (external-
+(`FORMALLY_PROVED`) (745); the single-prime reduction *Forced locus ⇔
+Achievability* (an earlier wording said "Principality ⇔ Achievability";
+principality is only implied, not equivalent) — prose-derived from 744/745 plus minimality (external-
 draft precedent W-001; native formalization `OPEN`) — together with the
 **Forced-Locus Law**: `B(w) == {F_q(w)}` on all 6285 exhaustively scanned
 single-prime words, zero Lemma-A violations, zero law mismatches, pinned
@@ -394,8 +398,10 @@ scanned words, zero mismatches (749); and the resolution of
 6285/6285 principality), and the **general form is REFUTED** by the
 explicit witness `w* = aaccabbbaccaaccbbb` with `F₂ = {ac,bc}`,
 `F₃ = {ab,bc}`, `B(w*) = {{ab,bc},{ac,bc}}` — machine-verified through
-the formula; direct BFS at 18 letters exceeds the declared caps and is
-honestly not performed, the classical projection lemma having been
+the formula AND by direct projection-free BFS at 18 letters (certificate
+`break_locus_formula_tr2c`, explicit cap 20,000; the largest classes have
+18,564 members — an earlier wording claimed the BFS "exceeds the declared
+caps", which was wrong), the classical projection lemma having also been
 cross-checked on six full small lattices (doc 183). Corollary: `|B(w)|`
 is at most the number of distinct primes dividing the gcd. See doc 185.
 
@@ -412,6 +418,66 @@ hidden type constraint at the smallest shapes. General type-matrix
 realizability remains `OPEN` (narrowed by the star theorem and the
 exhaustive small-shape spectra). See doc 186.
 
+## DEF-754–756 / THM-NO-001–009 / THM-RT-001–004 / THM-PD-001–003 — General number theory in the stable Lean graph (2026-09-03)
+
+`DEF-754` (cyclic read and rotation, `Veyra.Necklace.read`/`rot`, with the
+shift stabilizer `Fix`), `DEF-755` (primitive word and literal power,
+`Veyra.Root.Primitive`/`pow`), and `DEF-756` (coordinate valuation split
+of a `ZpVeyra` family, `exists_valuation`/`split_valuation`) are the
+definitions behind three new stable sources. Theorem cards, all
+`FORMALLY_PROVED`, Mathlib-free, quantifying over host `Nat`/`List`:
+**THM-NO-001–009** (`VeyraNecklaceOrbit.lean`) — rotation group law,
+gcd-closed stabilizer, prime-length orbit dichotomy for every prime and any
+alphabet, pairwise-distinct rotations, the orbit-partition counting law, and
+Fermat `k^p = k + p·q` / `p ∣ k^p − k` / `k^p % p = k % p` for all primes
+`p` and all `k`, with the divisibility content of the N8 Fermat-count cards
+(`THM_N8_004/005`, plus `p = 7`) recovered as instances — not the Gauss
+`n = 4` card or the composite counterexample; **THM-NO-010** Gauss
+divisibility `n ∣ #aperiodic(k, n)` for every positive `n` and **THM-NO-011**
+aperiodic ⇔ primitive (added 2026-09-05; the file now imports
+`VeyraPrimitiveRoot`);
+**THM-RT-001–004** (`VeyraPrimitiveRoot.lean`) — powers of a common root
+commute, the Lyndon–Schützenberger commutation theorem, constructive
+existence of a primitive root, and uniqueness of root and exponent;
+**THM-PD-001–003** (`VeyraPadicDomain.lean`) — the coordinate
+integral-domain law of `ZpVeyra(p)` (families nonzero at depths `n`, `m`
+multiply to a family nonzero at depth `n + m`), its constructive depth form,
+and the classical no-zero-divisors corollary (`Classical.choice` printed in
+its closure). `THM-PD-001` is the first theorem in the PΩ2/N family whose
+proof consumes `VeyraPrimeWitness.no_proper_divisor`. Non-claims: no public
+alias, certificate, or bundle entry (not `PUBLICLY_VALIDATED`); no native
+quantifier or completed-infinity claim; no promotion of W-001/THM-001–003;
+the Gauss congruence at composite length and Z_p valuation/units/Hensel
+remain `OPEN`. See doc 188.
+
+## DEF-757–760 / THM-RA-001–014 — Resonance arithmetic over the native recurrence (2026-09-06)
+
+`DEF-757` (one-tact length observer `toNat`/`ofNat` on `Recurrence`),
+`DEF-758` (structural division `quotient`/`residual` and phase congruence
+`PhaseCongruent m x y := residual m x = residual m y`), `DEF-759` (resonance
+prime: at least two pulses whose only resonators are the unit pulse and
+itself) and `DEF-760` (shared echo `Nat.gcd`-transport and shared closure
+`Nat.lcm`-transport) make the docs/02 vocabulary definitions on the native
+`Recurrence` of `VeyraNativeArithmetic.lean`. Theorem cards, all
+`FORMALLY_PROVED` in `VeyraResonanceArithmetic.lean` (Mathlib-free, no
+classical choice): **THM-RA-001–003** the observer is a bijection carrying
+stitch/weave to `+`/`×`; **THM-RA-004** weave laws; **THM-RA-005** resonance is
+the divisibility preorder; **THM-RA-006** structural division reconstructs,
+bounds, and is unique; **THM-RA-007/008** phase congruence is exactly "same
+residual after maximal extraction", an equivalence compatible with stitch and
+weave; **THM-RA-009** resonance primes = primes of the observer;
+**THM-RA-010** Fermat in the vocabulary (`rpow k p ≡_p k`); **THM-RA-011/012**
+the escape leaves the unit phase and carries a resonance prime outside any
+finite list (Euclid); **THM-RA-013/014** gcd/lcm universal properties.
+Executable counterpart `src/core/resonance_arithmetic.py` with certificate
+`resonance_arithmetic_ra` (`EXECUTABLE_EVIDENCE`) and the AST guard
+`tests/test_resonance_decision_paths.py` (no host `%`, `//`, `**`, `pow`, `gcd`,
+`is_prime_int` on any number-theory decision path outside declared shadow
+functions). Non-claims: statements are native, the metatheory is Lean over
+`Nat` through the bijection (docs/149 §3); no native quantifier, no completed
+infinity, no promotion of W-001/THM-001–003, no public alias/certificate
+bundle (not `PUBLICLY_VALIDATED`). See doc 189.
+
 **Literature positioning (doc 187, binding on the whole TR-2 lane):** the
 fixed-relation characterization behind `THM-TR2-002..007` is **classical
 — Duboc 1986, Prop. 1.7** (with the projection lemma from Duboc
@@ -422,8 +488,75 @@ their evidence rungs as formalizations and carry **no novelty claim**.
 The lane's candidate contributions are only the lattice-parametric
 layer — `B(w)`, the prime-floor formula `THM-TR2-008`, tightness
 `THM-TR2-009`, the singleton criterion and the refutation witness — for
-which no precedent was found in searched sources (closest structural
+which no precedent was found in searched sources; in standard
+combinatorics-on-words terms the formula is the gcd form of Duboc's
+projection characterization (the exponent of a trace equals the gcd of
+the letter counts and of the exponents of its dependent-pair projections,
+each projection having a unique primitive root by Lyndon–Schützenberger),
+so it is a corollary of L1 with up-set bookkeeping, not an independent
+result (doc 187) (closest structural
 neighbour: Earnshaw–Sobociński 2023 on the poset `Ind_Σ`, unrelated to
 powers). Mandatory pre-submission checks (zbMATH/MathSciNet; full text of
 Choffrut and Duchamp–Krob in *The Book of Traces*; forward citations of
 Lohrey–Stober–Weiß 2022–2024) are **unperformed**.
+
+## DEF-761–764 / THM-OS-001–019 — The observer site: apartness, silence and stage-relative equality (2026-09-06)
+
+`DEF-761` (apartness at a stage: some admitted partial observer ready on both
+presentations with different values; echo: every admitted observer ready with
+equal values; silent: neither), `DEF-762` (internal equality relative to a
+site: never apart within the site), `DEF-763` (forcing of `x = y ∨ x # y` at a
+stage, and the sieve-valued truth value of a stage predicate) and `DEF-764`
+(primitivity at a stage: not echoed to any literal proper power) make the
+third inversion of `docs/00` executable and formal on finite sites of partial
+observers. Theorem cards, all `FORMALLY_PROVED` in `VeyraObserverSite.lean`
+(Mathlib-free, no classical choice): **THM-OS-001/002** distinctions persist
+and echo retracts under refinement; **THM-OS-003/004** the three statuses are
+exhaustive and exclusive, total observers leave no silence; **THM-OS-005/006**
+apartness is irreflexive, symmetric and (for total observers) cotransitive;
+**THM-OS-007/018** one silent observer breaks cotransitivity and transitivity
+of internal equality (finite countermodel); **THM-OS-019** total observers make
+internal equality an equivalence; **THM-OS-008** internal equality is stable;
+**THM-OS-009** excluded middle for equality fails at an incomplete stage
+(`ab`/`ba` at `{length}` of `{length, word}`, finite countermodel);
+**THM-OS-010** a complete finite stage decides; **THM-OS-013/014** the truth
+value of apartness is an up-closed sieve while echo's is not (echo is not an
+internal proposition, it is "not yet apart"); **THM-OS-017** stage echo is a
+partial equivalence relation with domain the readable presentations;
+**THM-OS-011/012/015/016** stage-primitivity is monotone under refinement,
+genuinely stage-dependent (`aba`), literal primitivity at `{word}` and
+unit-only at `{length}`. Executable counterpart `src/core/observer_site.py`
+with certificate `observer_site_os` (`EXECUTABLE_EVIDENCE`). Non-claims: finite
+host-carried sites only; no statement about physical observers, observer
+formation or translation, the P1/R16 doctrines beyond the instance reading of
+`THM_TR1_003`, or topos theory; not `PUBLICLY_VALIDATED`. See doc 190.
+
+## DEF-765–768 / THM-VA-001–014 — Arithmetic as a variable object over the observer site (2026-09-06)
+
+`DEF-765` (fibre `Quot (Echo T)` of the presheaf of modes at a stage and
+restriction along refinement), `DEF-766` (descent: echo at a stage is a
+congruence for an operation, which then acts on the fibre), `DEF-767` (stitch
+`x ++ y`, weave `y^{|x|}`, cyclic echo, canonical lexicographic cut and
+cut-stitch on binary words) and `DEF-768` (resonance at a stage: echoed to a
+power) relativize the docs/02 operations to stages. Theorem cards, all
+`FORMALLY_PROVED` in `VeyraVariableArithmetic.lean` (Mathlib-free, no
+classical choice): **THM-VA-001** arithmetic commutes with restriction;
+**THM-VA-002/004** stitch and weave descend to the length, word and bag
+stages; **THM-VA-003** the natural numbers are the length fibre with stitch as
+`+` and weave as `×`; **THM-VA-005/006** stitch does not respect cyclic echo
+while weave does (closed modes have no native stitch); **THM-VA-007–010**
+commutativity of stitch is a bag-stage law retracted at the word stage,
+commutativity of weave holds only at the length stage, left distributivity
+holds at the bag stage and fails at the word stage, right distributivity and
+associativity are literal; **THM-VA-011** AX-005 fails for stitching closed
+modes through canonical cuts (finite countermodel `a, b, ab`);
+**THM-VA-012** bag-stage primitivity is coprimality of letter counts;
+**THM-VA-013/014** resonance retracts under refinement and is divisibility of
+lengths at the length stage. Executable counterpart
+`src/core/observer_arithmetic.py` (declared shadow `parikh_shadow_primitive`)
+with certificate `observer_arithmetic_va` (`EXECUTABLE_EVIDENCE`). AX-005
+keeps its seed-axiom row for open stitching; its failure is recorded for
+canonical-cut stitching of closed modes. Non-claims: host-carried finite
+families; nothing about the AX-007 `Mode`, W-001, physical observers or topos
+theory; the all-cuts stitch of closed modes is `OPEN`; not
+`PUBLICLY_VALIDATED`. See doc 191.

@@ -35,12 +35,14 @@ Multiplication is **weaving**: replace each tact of one mode by a full copy of a
 `a ⊗ b := b-fold weave of a`
 
 Human shadow: `τ^m ⊗ τ^n = τ^(mn)`.
+On words both operations act on the fibres of the observer site where echo is a congruence, commute with restriction, and make the natural numbers the length fibre; their laws are stage properties (`THM_VA_001`–`010`, docs/191).
 
 ## 4. Divisibility
 
 A mode `a` **resonates inside** mode `b`, written `a ▹ b`, if `b` can be echo-built by stitching copies of `a` without leftover phase.
 
 Human shadow: `a` divides `b`.
+At a stage, resonance is being echoed to a power; it retracts under refinement and is divisibility of lengths at the length stage (`THM_VA_013`/`014`, docs/191).
 
 ## 5. Prime analogue
 
@@ -56,15 +58,11 @@ Modes `x` and `y` are **phase-congruent modulo** mode `m`, written:
 
 `x ≡_m y`
 
-if their difference of emitted tacts leaves the same phase obstruction after maximal `m`-resonance extraction.
+if the residuals of the structural division of `x` and of `y` by `m` coincide: both are `m`-weaves stitched with one common residual shorter than `m` (`THM_RA_006`/`007`, docs/189).
 
 Human shadow: `x mod m = y mod m`.
 
-Boundary: "difference" and "maximal extraction" are shadow-level wording —
-they presuppose host subtraction and ordering. The executable native
-counterpart is structural division with obstruction rows (`structural_divide`,
-`cycle_divisibility_row`); a fully native definition of phase congruence is an
-open research task, not an established primitive.
+Phase congruence is an equivalence compatible with stitch and weave (`THM_RA_008`) and is executable as `resonance_arithmetic.phase_congruent` with no host `%` on the decision path.
 
 ## 7. First non-human shift
 
@@ -72,8 +70,12 @@ The key shift is that arithmetic is not about quantities but about **stable recu
 
 This makes number theory look closer to physics:
 
-- divisibility = resonance,
-- primality = indecomposable rhythm,
-- modularity = phase obstruction,
-- gcd = strongest shared echo,
-- lcm = smallest shared closure.
+- divisibility = resonance (`resonates`; `THM_RA_005`),
+- primality = indecomposable rhythm (`resonance_prime_witness`; `THM_RA_009`),
+- modularity = phase obstruction (`phase_residual`/`phase_congruent`; `THM_RA_007`–`008`),
+- gcd = strongest shared echo (`shared_echo`; `THM_RA_013`),
+- lcm = smallest shared closure (`shared_closure`; `THM_RA_014`).
+
+Each item is a native definition with an executable witness and a
+machine-checked theorem (docs/189); Fermat and Euclid appear in the same
+vocabulary as `THM_RA_010` and `THM_RA_012`.
