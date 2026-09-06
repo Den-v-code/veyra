@@ -1,0 +1,665 @@
+name: pr98-post99-derive-v3
+
+on:
+  push:
+    branches:
+      - verify/pr98-post99-rebase-workbench-v1
+
+permissions:
+  contents: write
+
+jobs:
+  derive:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          ref: verify/pr98-post99-rebase-workbench-v1
+          fetch-depth: 0
+          persist-credentials: true
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+
+      - name: Install exact Python tools
+        run: |
+          set -euo pipefail
+          python -m pip install --no-deps --requirement requirements/ci-py311.txt
+          python -m pip install --only-binary=:all: cryptography==50.0.0
+          python -m pip install --no-build-isolation --no-deps -e .
+
+      - name: Port reviewed semantic fix and hostile regressions only
+        run: |
+          set -euo pipefail
+          git cat-file -e a11fee75f9e4f803ce72b807f484eae407e8523f^{commit}
+          git checkout a11fee75f9e4f803ce72b807f484eae407e8523f -- \
+            src/core/intrinsic_mode_bridge.py \
+            src/core/proof_core_bridge.py \
+            src/core/proof_core_manifest.py \
+            src/core/observer_core_bridge_io.py \
+            src/core/proof_elaboration_bridge_io.py \
+            tests/test_intrinsic_mode_bridge.py \
+            tests/test_observer_core_bridge.py \
+            tests/test_proof_core_bridge.py \
+            tests/test_proof_elaboration_bridge.py
+          git diff HEAD --check
+          test "$(git diff HEAD --name-only | wc -l)" -eq 9
+          echo 'POST99_PORTED_FILES'
+          git diff HEAD --name-only
+
+      - name: Install exact elan and Lean runtime
+        env:
+          ELAN_ARCHIVE_SHA256: 4e717523217af592fa2d7b9c479410a31816c065d66ccbf0c2149337cfec0f5c
+          ELAN_ARCHIVE_URL: https://github.com/leanprover/elan/releases/download/v4.2.1/elan-x86_64-unknown-linux-gnu.tar.gz
+          LEAN_ARCHIVE_SHA256: 5b51625f154f0a13b37bd892f1d95f79e9fd5b9f0d095b4126215ee2bc8dbe86
+          LEAN_ARCHIVE_URL: https://github.com/leanprover/lean4/releases/download/v4.30.0-rc2/lean-4.30.0-rc2-linux.tar.zst
+        run: |
+          set -euo pipefail
+          ea="$RUNNER_TEMP/elan.tar.gz"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$ea" "$ELAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$ELAN_ARCHIVE_SHA256" "$ea" | sha256sum --check --strict
+          eu="$RUNNER_TEMP/elan-unpack"
+          mkdir -p "$eu" "$HOME/.elan/bin" "$HOME/.elan/toolchains"
+          tar -xzf "$ea" -C "$eu"
+          install -m 0755 "$(find "$eu" -type f -name elan-init -print -quit)" "$HOME/.elan/bin/elan"
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+          la="$RUNNER_TEMP/lean.tar.zst"
+          curl --proto '=https' --tlsv1.2 --fail --location --retry 3 --silent --show-error -o "$la" "$LEAN_ARCHIVE_URL"
+          printf '%s  %s\n' "$LEAN_ARCHIVE_SHA256" "$la" | sha256sum --check --strict
+          lu="$RUNNER_TEMP/lean-unpack"
+          mkdir -p "$lu"
+          tar --zstd -xf "$la" -C "$lu"
+          mv "$lu/lean-4.30.0-rc2-linux" "$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2"
+          lean_bin="$HOME/.elan/toolchains/leanprover--lean4---v4.30.0-rc2/bin/lean"
+          actual="$(sha256sum "$lean_bin" | cut -d' ' -f1)"
+          test "$actual" = "3e0d0d3d801675359f2d4cf9815bfdb417b20b92fdd9d48b3b14c95bbae28bbf"
+          echo "$(dirname "$lean_bin")" >> "$GITHUB_PATH"
+          "$HOME/.elan/bin/elan" run leanprover/lean4:v4.30.0-rc2 lean --version
+          echo "POST99_REVIEWED_LEAN_SHA256=$actual"
+
+      - name: Focused execution-binding regressions
+        run: |
+          set -euo pipefail
+          pytest -q \
+            tests/test_proof_core_bridge.py::test_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_proof_core_bridge.py::test_toolchain_identity_is_content_bound_not_filesystem_metadata \
+            tests/test_intrinsic_mode_bridge.py::test_r9_lean_command_executes_resolved_content_pinned_binary \
+            tests/test_intrinsic_mode_bridge.py::test_r9_toolchain_identity_is_content_bound_not_filesystem_metadata \
+            tests/test_proof_elaboration_bridge.py::test_r10_toolchain_identity_excludes_host_local_metadata \
+            tests/test_observer_core_bridge.py::test_r11_toolchain_identity_excludes_host_local_metadata
+
+      - name: Renew R9 source manifest and generated export
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          from src.core.intrinsic_mode_lean_render import REQUIRED_DIGESTS, render_mode_transport_lean
+          from src.core.proof_core_resonance import intrinsic_resonance_theorem
+          root = Path.cwd()
+          paths = {
+              "python_transport": root / "src/core/intrinsic_mode_transport.py",
+              "python_laws": root / "src/core/intrinsic_mode_laws.py",
+              "python_renderer": root / "src/core/intrinsic_mode_lean_render.py",
+              "python_snapshot": root / "src/core/intrinsic_mode_snapshot.py",
+              "python_bridge": root / "src/core/intrinsic_mode_bridge.py",
+              "native_runtime": root / "src/core/native_runtime.py",
+              "intrinsic_arithmetic": root / "src/core/intrinsic_arithmetic.py",
+              "proof_core_types": root / "src/core/proof_core_types.py",
+              "lean_arithmetic": root / "proofs/lean/VeyraNativeArithmetic.lean",
+              "lean_semantics": root / "proofs/lean/VeyraNativeSemantics.lean",
+              "lean_intrinsic_runtime": root / "proofs/lean/VeyraIntrinsicRuntime.lean",
+              "lean_kernel": root / "proofs/lean/VeyraProofKernel.lean",
+              "lean_soundness": root / "proofs/lean/VeyraProofSoundness.lean",
+              "lean_r7_export": root / "proofs/lean/VeyraProofResonance.lean",
+              "lean_transport": root / "proofs/lean/VeyraRecurrenceModeBridge.lean",
+              "lean_export": root / "proofs/lean/VeyraProofModeTransport.lean",
+          }
+          dig = {key: sha256(path.read_bytes()).hexdigest() for key, path in paths.items()}
+          export = render_mode_transport_lean(
+              intrinsic_resonance_theorem().artifact.proof_digest,
+              {key: dig[key] for key in REQUIRED_DIGESTS},
+          ).encode()
+          paths["lean_export"].write_bytes(export)
+          dig["lean_export"] = sha256(export).hexdigest()
+          manifest = root / "src/core/intrinsic_mode_manifest.py"
+          text = manifest.read_text()
+          for key, value in dig.items():
+              text, count = re.subn(
+                  rf'("{re.escape(key)}":\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              assert count == 1, (key, count)
+          manifest.write_text(text)
+          print("POST99_RENEW_R9_EXPORT", dig["lean_export"])
+          PY
+
+      - name: Replay R9 in fresh process
+        run: |
+          python - <<'PY'
+          from src.core.intrinsic_mode_bridge import check_intrinsic_mode_bridge
+          report = check_intrinsic_mode_bridge()
+          print("POST99_R9", report.status, report.binding_digest, report.toolchain)
+          assert report.status == "checked", report.diagnostics
+          PY
+
+      - name: Renew R10 generated export
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          from src.core.proof_elaboration_canonical import canonical_elaboration_lean
+          export = canonical_elaboration_lean()
+          Path("proofs/lean/VeyraProofElaboration.lean").write_bytes(export)
+          print("POST99_RENEW_R10_EXPORT", sha256(export).hexdigest())
+          PY
+
+      - name: Derive changed R10 Lean object record
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          import subprocess
+          from tempfile import TemporaryDirectory
+          import src.core.proof_elaboration_bridge_io as io
+          from src.core.proof_elaboration_snapshot import SNAPSHOT_NAMES
+
+          command = io.lean_command()
+          assert command
+          with TemporaryDirectory(prefix="post99-r10-object-") as tmp:
+              root = Path(tmp)
+              prior = []
+              derived = None
+              for index, (name, filename) in enumerate(SNAPSHOT_NAMES.items(), 1):
+                  if index > 8:
+                      break
+                  source = Path("proofs/lean", filename).resolve()
+                  stage = root / f"{index:02d}-{source.stem}"
+                  stage.mkdir()
+                  output = stage / f"{source.stem}.olean"
+                  env = io._clean_env(tuple(path.parent for _, path in prior))
+                  proc = subprocess.run(
+                      command + ["-R", str(Path("proofs/lean").resolve()), "-o", str(output), str(source)],
+                      cwd=Path("proofs/lean").resolve(), env=env,
+                      text=True, capture_output=True, check=False,
+                  )
+                  assert proc.returncode == 0, (name, proc.stderr, proc.stdout)
+                  if index < 8:
+                      io._validate_fresh_object(root, name, output)
+                      prior.append((name, output))
+                  else:
+                      data = output.read_bytes()
+                      derived = (output.name, len(data), sha256(data).hexdigest())
+              assert derived is not None
+
+          path = Path("src/core/proof_elaboration_objects.py")
+          text = path.read_text()
+          filename, size, digest = derived
+          pattern = (
+              r'("lean_r9_export": \(\n\s*"VeyraProofModeTransport\.olean",\s*)'
+              r'[0-9]+(,\n\s*")[0-9a-f]{64}(",\n\s*\),)'
+          )
+          text, count = re.subn(
+              pattern,
+              lambda match: match.group(1) + str(size) + match.group(2) + digest + match.group(3),
+              text,
+          )
+          assert count == 1, count
+          path.write_text(text)
+          print("POST99_RENEW_R10_OBJECT", filename, size, digest)
+          PY
+
+      - name: Renew R10 source manifest
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          from src.core.proof_elaboration_bridge import SOURCE_PATHS
+          dig = {key: sha256(Path(value).read_bytes()).hexdigest() for key, value in SOURCE_PATHS.items()}
+          path = Path("src/core/proof_elaboration_manifest.py")
+          text = path.read_text()
+          for key, value in dig.items():
+              text, count = re.subn(
+                  rf'("{re.escape(key)}":\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              assert count == 1, (key, count)
+          path.write_text(text)
+          print("POST99_RENEW_R10_MANIFEST", dig["reviewed_objects"], dig["bridge_io"], dig["lean_r9_export"], dig["lean_export"])
+          PY
+
+      - name: Replay R10 in fresh process
+        run: |
+          python - <<'PY'
+          from src.core.proof_elaboration_bridge import check_proof_elaboration_bridge
+          report = check_proof_elaboration_bridge()
+          print("POST99_R10", report.status, report.binding_digest, report.snapshot_digest, report.toolchain)
+          assert report.status == "checked", report.diagnostics
+          PY
+
+      - name: Renew R11 manifest
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          from src.core.proof_elaboration_bridge import proof_elaboration_bridge_report
+          from src.core.observer_core_lean_render import canonical_observer_artifact, canonical_observer_lean
+          from src.core.observer_core_bridge import SOURCE_PATHS
+          r10 = proof_elaboration_bridge_report()
+          assert r10.status == "checked"
+          generated = canonical_observer_lean(canonical_observer_artifact(), r10.binding_digest)
+          dig = {key: sha256(Path(value).read_bytes()).hexdigest() for key, value in SOURCE_PATHS.items()}
+          dig["lean_export"] = sha256(generated).hexdigest()
+          path = Path("src/core/observer_core_manifest.py")
+          text = path.read_text()
+          for key, value in dig.items():
+              text, count = re.subn(
+                  rf'(\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2',
+                  text,
+              )
+              assert count == 1, (key, count)
+          path.write_text(text)
+          print("POST99_RENEW_R11_EXPORT", dig["lean_export"])
+          PY
+
+      - name: Replay R11 in fresh process
+        run: |
+          python - <<'PY'
+          from src.core.observer_core_bridge import check_observer_core_bridge
+          report = check_observer_core_bridge()
+          print("POST99_R11", report.status, report.binding_digest, report.snapshot_digest, report.toolchain)
+          assert report.status == "checked", report.diagnostics
+          PY
+
+      - name: Renew R12.5 manifest and envelope
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          from src.core.observer_core_bridge import observer_core_bridge_report
+          from src.core.intrinsic_vam_formal_lean_render import canonical_intrinsic_vam_formal_lean
+          from src.core.intrinsic_vam_formal_effects import intrinsic_vam_formal_effect_digest
+          from src.core.shadow_effects import shadow_effect_registry_digest
+          import src.core.intrinsic_vam_formal_bridge_core as core
+          import src.core.intrinsic_vam_formal_bridge_io as io
+
+          r11 = observer_core_bridge_report()
+          assert r11.status == "checked"
+          registry = shadow_effect_registry_digest()
+          effect = intrinsic_vam_formal_effect_digest()
+          generated = canonical_intrinsic_vam_formal_lean(r11.binding_digest, registry, effect)
+          dig = {key: sha256(Path(value).read_bytes()).hexdigest() for key, value in core.SOURCE_PATHS.items()}
+          dig["lean_export"] = sha256(generated).hexdigest()
+          command = io.lean_command()
+          assert command
+          toolchain = io.toolchain_identity(command)
+          snapshot = io.snapshot_key(dig, r11.binding_digest, registry, effect, toolchain)
+          body = core._report_body(r11, dig, snapshot, registry, effect, toolchain)
+          binding = io.binding_digest(body)
+          path = Path("src/core/intrinsic_vam_formal_manifest.py")
+          text = path.read_text()
+          for name, value in {
+              "EXPECTED_R11_BINDING": r11.binding_digest,
+              "EXPECTED_SNAPSHOT_DIGEST": snapshot,
+              "EXPECTED_BINDING_DIGEST": binding,
+          }.items():
+              text, count = re.subn(
+                  rf'({name}\s*=\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2', text,
+              )
+              assert count == 1, (name, count)
+          for key, value in dig.items():
+              text, count = re.subn(
+                  rf'(\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2', text,
+              )
+              assert count == 1, (key, count)
+          path.write_text(text)
+          print("POST99_RENEW_R12", r11.binding_digest, snapshot, binding, toolchain)
+          PY
+
+      - name: Replay R12.5 in fresh process
+        run: |
+          python - <<'PY'
+          from src.core.intrinsic_vam_formal_bridge_core import check_intrinsic_vam_formal_bridge
+          report = check_intrinsic_vam_formal_bridge()
+          print("POST99_R12", report.status, report.binding_digest, report.snapshot_digest, report.toolchain)
+          assert report.status == "checked", report.diagnostics
+          PY
+
+      - name: Renew R13 source artifact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import src.core.intrinsic_observer_echo_source as module
+          artifact = module._build_source_artifact()
+          path = Path("src/core/intrinsic_observer_echo_source.py")
+          text = path.read_text()
+          for name, value in {
+              "EXPECTED_R10_BINDING_DIGEST": artifact.r10_binding_digest,
+              "EXPECTED_ARTIFACT_DIGEST": artifact.artifact_digest,
+          }.items():
+              text, count = re.subn(
+                  rf'({name}\s*=\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2', text,
+              )
+              assert count == 1, (name, count)
+          path.write_text(text)
+          print("POST99_RENEW_R13_SOURCE", artifact.r10_binding_digest, artifact.artifact_digest)
+          PY
+
+      - name: Renew R13 executable evidence
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import src.core.intrinsic_observer_echo_evidence as module
+          evidence = module._build()
+          path = Path("src/core/intrinsic_observer_echo_evidence.py")
+          text = path.read_text()
+          text, count = re.subn(
+              r'(EXPECTED_EVIDENCE_DIGEST\s*=\s*")[0-9a-f]{64}(")',
+              rf'\g<1>{evidence.digest}\2', text,
+          )
+          assert count == 1
+          path.write_text(text)
+          print("POST99_RENEW_R13_EVIDENCE", evidence.source_artifact_digest, evidence.digest)
+          PY
+
+      - name: Renew R13 theorem artifact
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import src.core.intrinsic_observer_echo_theorem as module
+          theorem = module._build()
+          path = Path("src/core/intrinsic_observer_echo_theorem.py")
+          text = path.read_text()
+          text, count = re.subn(
+              r'(EXPECTED_ARTIFACT_DIGEST\s*=\s*")[0-9a-f]{64}(")',
+              rf'\g<1>{theorem.artifact_digest}\2', text,
+          )
+          assert count == 1
+          path.write_text(text)
+          print("POST99_RENEW_R13_THEOREM", theorem.statement_digest, theorem.artifact_digest)
+          PY
+
+      - name: Renew R13 formal manifest and envelope
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          from pathlib import Path
+          import re
+          from src.core.intrinsic_observer_echo_source import intrinsic_observer_echo_source_artifact
+          from src.core.intrinsic_observer_echo_evidence import intrinsic_observer_echo_evidence
+          from src.core.intrinsic_observer_echo_effects import intrinsic_observer_echo_effect_digest, EFFECT_BOUNDARY
+          from src.core.intrinsic_vam_formal_bridge import intrinsic_vam_formal_bridge_report
+          from src.core.shadow_effects import shadow_effect_registry_digest
+          from src.core.intrinsic_observer_echo_formal_lean_render import canonical_intrinsic_observer_echo_formal_lean
+          import src.core.intrinsic_observer_echo_formal_bridge_core as core
+          import src.core.intrinsic_observer_echo_formal_bridge_io as io
+
+          phase = intrinsic_observer_echo_source_artifact()
+          evidence = intrinsic_observer_echo_evidence()
+          r12 = intrinsic_vam_formal_bridge_report()
+          assert r12.status == "checked"
+          registry = shadow_effect_registry_digest()
+          effect = intrinsic_observer_echo_effect_digest()
+          values = (
+              phase.artifact_digest,
+              phase.r10_binding_digest,
+              r12.r11_binding_digest,
+              r12.binding_digest,
+              evidence.digest,
+              registry,
+              effect,
+          )
+          generated = canonical_intrinsic_observer_echo_formal_lean(*values)
+          dig = {key: sha256(Path(value).read_bytes()).hexdigest() for key, value in core.SOURCE_PATHS.items()}
+          dig["lean_export"] = sha256(generated).hexdigest()
+          command = io.lean_command()
+          assert command
+          toolchain = io.toolchain_identity(command)
+          snapshot = io.snapshot_key(dig, *values, toolchain)
+          local = (phase, evidence, registry, effect, EFFECT_BOUNDARY)
+          body = core._report_body(local, r12, dig, snapshot, toolchain)
+          binding = io.binding_digest(body)
+          path = Path("src/core/intrinsic_observer_echo_formal_manifest.py")
+          text = path.read_text()
+          constants = {
+              "EXPECTED_PHASE_ARTIFACT": phase.artifact_digest,
+              "EXPECTED_SOURCE_ELABORATION_BINDING": phase.r10_binding_digest,
+              "EXPECTED_R11_BINDING": r12.r11_binding_digest,
+              "EXPECTED_R12_BINDING": r12.binding_digest,
+              "EXPECTED_SNAPSHOT_DIGEST": snapshot,
+              "EXPECTED_BINDING_DIGEST": binding,
+          }
+          for name, value in constants.items():
+              text, count = re.subn(
+                  rf'({name}\s*=\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2', text,
+              )
+              assert count == 1, (name, count)
+          for key, value in dig.items():
+              text, count = re.subn(
+                  rf'(\("{re.escape(key)}",\s*")[0-9a-f]{{64}}(")',
+                  rf'\g<1>{value}\2', text,
+              )
+              assert count == 1, (key, count)
+          path.write_text(text)
+          print("POST99_RENEW_R13_FORMAL", *values, snapshot, binding, toolchain)
+          PY
+
+      - name: Replay R13 formal and theorem in fresh process
+        run: |
+          python - <<'PY'
+          from src.core.intrinsic_observer_echo_formal_bridge_core import check_intrinsic_observer_echo_formal_bridge
+          from src.core.intrinsic_observer_echo_theorem import intrinsic_observer_echo_theorem
+          report = check_intrinsic_observer_echo_formal_bridge()
+          print("POST99_R13", report.status, report.binding_digest, report.snapshot_digest, report.toolchain)
+          assert report.status == "checked", report.diagnostics
+          theorem = intrinsic_observer_echo_theorem()
+          print("POST99_R13_THEOREM", theorem.statement_digest, theorem.artifact_digest)
+          PY
+
+      - name: Renew R13 trusted theorem-contract digest
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          import src.core.layer_theorem_contracts as contracts
+          digest = contracts.theorem_contract_digest(contracts._INTRINSIC_OBSERVER_ECHO_CONTRACT)
+          path = Path("src/core/layer_theorem_contract_handlers.py")
+          text = path.read_text()
+          text, count = re.subn(
+              r'(R13_TRUSTED_CONTRACT_DIGEST\s*=\s*")[0-9a-f]{64}(")',
+              rf'\g<1>{digest}\2', text,
+          )
+          assert count == 1
+          path.write_text(text)
+          print("POST99_RENEW_R13_CONTRACT", digest)
+          PY
+
+      - name: Renew research Lean source and aggregate roots
+        run: |
+          python - <<'PY'
+          from hashlib import sha256
+          import json
+          from pathlib import Path
+
+          def domain_root(domain, rows):
+              digest = sha256()
+              for value in (domain, *rows):
+                  encoded = value.encode("utf-8")
+                  digest.update(len(encoded).to_bytes(8, "big"))
+                  digest.update(encoded)
+              return digest.hexdigest()
+
+          path = Path("experimental/research_lean/manifest.json")
+          raw = json.loads(path.read_text())
+          replacements = {
+              name: sha256(Path(name).read_bytes()).hexdigest()
+              for name in (
+                  "proofs/lean/VeyraProofModeTransport.lean",
+                  "proofs/lean/VeyraProofElaboration.lean",
+              )
+          }
+          seen = set()
+          for row in raw["base_sources"]:
+              if row["path"] in replacements:
+                  row["sha256"] = replacements[row["path"]]
+                  seen.add(row["path"])
+                  print("POST99_RENEW_RESEARCH", row["path"], row["sha256"])
+          assert seen == set(replacements), (seen, replacements)
+
+          roots = {}
+          for group, key in (("base", "base_sources"), ("research", "research_sources")):
+              roots[group] = domain_root(
+                  f"veyra.research-lean.sources.v1:{group}",
+                  tuple(f"{row['path']}\0{row['sha256']}" for row in raw[key]),
+              )
+          raw["source_roots"] = roots
+          toolchain = raw["toolchain"]
+          claims = raw["headline_claims"]
+          closures = raw["axiom_closure"]
+          declarations = tuple(name for row in raw["research_sources"] for name in row["declarations"])
+          proof_rows = (
+              f"toolchain\0{toolchain['name']}\0{toolchain['version']}\0{toolchain['commit']}",
+              f"base\0{roots['base']}",
+              f"research\0{roots['research']}",
+              *(
+                  "claim\0" + name + "\0" + "\0".join((
+                      claims[name]["statement"],
+                      claims[name]["scope"],
+                      claims[name]["registry_relation"],
+                  ))
+                  for name in raw["headline_declarations"]
+              ),
+              *(f"axioms\0{name}\0{','.join(closures[name])}" for name in declarations),
+          )
+          raw["proof_root"] = domain_root("veyra.research-lean.proof.v1", tuple(proof_rows))
+          path.write_text(json.dumps(raw, indent=2, ensure_ascii=False) + "\n")
+          print("POST99_RESEARCH_ROOTS", roots)
+          print("POST99_RESEARCH_PROOF_ROOT", raw["proof_root"])
+          PY
+
+      - name: Final replay smoke
+        run: |
+          python - <<'PY'
+          from src.core.intrinsic_mode_bridge import intrinsic_mode_bridge_report
+          from src.core.proof_elaboration_bridge import proof_elaboration_bridge_report
+          from src.core.observer_core_bridge import observer_core_bridge_report
+          from src.core.intrinsic_vam_formal_bridge import intrinsic_vam_formal_bridge_report
+          from src.core.intrinsic_observer_echo_formal_bridge import intrinsic_observer_echo_formal_bridge_report
+          from src.core.intrinsic_observer_echo_theorem import intrinsic_observer_echo_theorem
+          from src.core.layer_theorem_contracts import theorem_contract_registry, theorem_contract_digest
+          reports = [
+              intrinsic_mode_bridge_report(),
+              proof_elaboration_bridge_report(),
+              observer_core_bridge_report(),
+              intrinsic_vam_formal_bridge_report(),
+              intrinsic_observer_echo_formal_bridge_report(),
+          ]
+          for report in reports:
+              print("FINAL_POST99_REPORT", type(report).__name__, report.status, report.binding_digest)
+              assert report.status == "checked"
+          theorem = intrinsic_observer_echo_theorem()
+          print("FINAL_POST99_THEOREM", theorem.artifact_digest)
+          registry = theorem_contract_registry()
+          print("FINAL_POST99_CONTRACTS", [(key, theorem_contract_digest(value)) for key, value in registry.items()])
+          PY
+
+      - name: Research checker
+        run: python scripts/check_research_lean.py --jobs 8
+
+      - name: Assert exact candidate file surface
+        run: |
+          set -euo pipefail
+          files=(
+            experimental/research_lean/manifest.json
+            proofs/lean/VeyraProofElaboration.lean
+            proofs/lean/VeyraProofModeTransport.lean
+            src/core/intrinsic_mode_bridge.py
+            src/core/intrinsic_mode_manifest.py
+            src/core/intrinsic_observer_echo_evidence.py
+            src/core/intrinsic_observer_echo_formal_manifest.py
+            src/core/intrinsic_observer_echo_source.py
+            src/core/intrinsic_observer_echo_theorem.py
+            src/core/intrinsic_vam_formal_manifest.py
+            src/core/layer_theorem_contract_handlers.py
+            src/core/observer_core_bridge_io.py
+            src/core/observer_core_manifest.py
+            src/core/proof_core_bridge.py
+            src/core/proof_core_manifest.py
+            src/core/proof_elaboration_bridge_io.py
+            src/core/proof_elaboration_manifest.py
+            src/core/proof_elaboration_objects.py
+            tests/test_intrinsic_mode_bridge.py
+            tests/test_observer_core_bridge.py
+            tests/test_proof_core_bridge.py
+            tests/test_proof_elaboration_bridge.py
+          )
+          git diff HEAD --check
+          mapfile -t actual < <(git diff HEAD --name-only | sort)
+          mapfile -t expected < <(printf '%s\n' "${files[@]}" | sort)
+          test "${#actual[@]}" -eq 22
+          diff -u <(printf '%s\n' "${expected[@]}") <(printf '%s\n' "${actual[@]}")
+          git diff HEAD --stat
+
+      - name: Publish one-commit post-99 canonical candidate
+        env:
+          BASE_SHA: 3d711761488719e150af07e3443c894ac0fbde95
+          TARGET_BRANCH: fix/current-tree-proof-reproducibility-execution-binding-post99-v1
+        run: |
+          set -euo pipefail
+          files=(
+            experimental/research_lean/manifest.json
+            proofs/lean/VeyraProofElaboration.lean
+            proofs/lean/VeyraProofModeTransport.lean
+            src/core/intrinsic_mode_bridge.py
+            src/core/intrinsic_mode_manifest.py
+            src/core/intrinsic_observer_echo_evidence.py
+            src/core/intrinsic_observer_echo_formal_manifest.py
+            src/core/intrinsic_observer_echo_source.py
+            src/core/intrinsic_observer_echo_theorem.py
+            src/core/intrinsic_vam_formal_manifest.py
+            src/core/layer_theorem_contract_handlers.py
+            src/core/observer_core_bridge_io.py
+            src/core/observer_core_manifest.py
+            src/core/proof_core_bridge.py
+            src/core/proof_core_manifest.py
+            src/core/proof_elaboration_bridge_io.py
+            src/core/proof_elaboration_manifest.py
+            src/core/proof_elaboration_objects.py
+            tests/test_intrinsic_mode_bridge.py
+            tests/test_observer_core_bridge.py
+            tests/test_proof_core_bridge.py
+            tests/test_proof_elaboration_bridge.py
+          )
+          patch="$RUNNER_TEMP/post99-fix.patch"
+          git diff HEAD --binary -- "${files[@]}" > "$patch"
+          test -s "$patch"
+          test "$(git diff HEAD --name-only -- "${files[@]}" | wc -l)" -eq 22
+          git reset --hard HEAD
+          git switch --detach "$BASE_SHA"
+          git switch -c "$TARGET_BRANCH"
+          git apply --index "$patch"
+          git diff --cached --check
+          test "$(git diff --cached --name-only | wc -l)" -eq 22
+          git config user.name "Den-v-code"
+          git config user.email "contributors@veyra.invalid"
+          git commit -m "fix(proofs): bind reproducible proof execution to reviewed Lean"
+          test "$(git rev-list --count "$BASE_SHA"..HEAD)" = 1
+          git push origin "HEAD:refs/heads/$TARGET_BRANCH"
+          echo "CANONICAL_POST99_SHA=$(git rev-parse HEAD)"
