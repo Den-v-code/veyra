@@ -1,0 +1,79 @@
+name: pr98-post99-falsification-v2
+
+on:
+  push:
+    branches:
+      - verify/pr98-post99-rebase-workbench-v1
+
+permissions:
+  contents: read
+
+jobs:
+  falsify:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: Justsomebuddy/veyra
+          ref: 3d711761488719e150af07e3443c894ac0fbde95
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.11.14"
+      - name: Reconfirm launcher and compiler execution are not the same reviewed object
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from tempfile import TemporaryDirectory
+          from types import SimpleNamespace
+          from unittest.mock import patch
+          import src.core.proof_core_bridge as bridge
+
+          version = (
+              "Lean (version 4.30.0-rc2, x86_64-unknown-linux-gnu, "
+              "commit 3dc1a088b6d2d8eafe25a7cd7ec7b58d731bd7cc, Release)"
+          )
+          with TemporaryDirectory() as td:
+              root = Path(td)
+              launcher = root / "elan"
+              launcher.write_bytes(b"launcher-metadata-object")
+              build = root / "build"
+              compile_calls = []
+
+              def fake_run(command, **_kwargs):
+                  command = list(command)
+                  if command[-1] == "--version":
+                      return SimpleNamespace(returncode=0, stdout=version, stderr="")
+                  if "-R" in command:
+                      compile_calls.append(tuple(command))
+                      return SimpleNamespace(returncode=0, stdout="", stderr="")
+                  raise AssertionError(f"unexpected-command:{command!r}")
+
+              with (
+                  patch.object(bridge.shutil, "which", return_value=str(launcher)),
+                  patch.object(bridge.subprocess, "run", side_effect=fake_run),
+                  patch.object(bridge, "BUILD_DIR", build),
+              ):
+                  report = bridge.check_proof_core_bridge()
+                  verified = bridge.verify_proof_core_bridge_report(report)
+
+              print("POST99_FALSIFICATION_STATUS", report.status)
+              print("POST99_FALSIFICATION_LEAN_CHECKED", report.lean_checked)
+              print("POST99_FALSIFICATION_VERIFIER_ACCEPTED", verified)
+              print("POST99_FALSIFICATION_COMPILE_CALLS", len(compile_calls))
+              print("POST99_FALSIFICATION_OLEAN_COUNT", len(tuple(build.rglob("*.olean"))))
+              print("POST99_FALSIFICATION_TOOLCHAIN", report.toolchain)
+              assert len(compile_calls) == 4
+              assert not tuple(build.rglob("*.olean"))
+              assert report.status == "checked"
+              assert report.lean_checked is True
+              assert verified is True
+          PY
+      - name: Attest exact upstream target
+        env:
+          TARGET_SHA: 3d711761488719e150af07e3443c894ac0fbde95
+        run: |
+          test "$(git rev-parse HEAD)" = "$TARGET_SHA"
+          test -z "$(git status --porcelain --untracked-files=all)"
+          echo "POST99_ATTEST target=$TARGET_SHA clean=yes"
