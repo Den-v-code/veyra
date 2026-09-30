@@ -1,3 +1,5 @@
+import pytest
+
 from src.core.modes import (
     TEST_FAMILIES,
     Mode,
@@ -31,6 +33,71 @@ def test_echo_test_families_split_identity():
     assert not echo_equivalent(ab, aa, TEST_FAMILIES["bag"])
     assert not echo_equivalent(ab, ba, TEST_FAMILIES["ordered"])
     assert echo_equivalent(ab, ba, TEST_FAMILIES["cycle"])
+
+
+@pytest.mark.parametrize("container", ("tuple", "list", "iterator", "generator"))
+@pytest.mark.parametrize(
+    ("left", "right", "family", "expected"),
+    (
+        ("ab", "ab", "ordered", True),
+        ("ab", "ba", "bag", True),
+        ("ab", "aa", "bag", False),
+        ("ab", "ba", "ordered", False),
+        ("ab", "a", "length", False),
+        ("ab", "a", "empty", True),
+    ),
+)
+def test_echo_equivalent_accepts_single_pass_observer_families(container, left, right, family, expected):
+    observers = () if family == "empty" else TEST_FAMILIES[family]
+    if container == "list":
+        observers = list(observers)
+    elif container == "iterator":
+        observers = iter(observers)
+    elif container == "generator":
+        observers = (observer for observer in observers)
+    assert echo_equivalent(Mode.from_word(left), Mode.from_word(right), observers) is expected
+
+
+@pytest.mark.parametrize(("right_word", "expected"), (("ab", True), ("ba", False)))
+def test_echo_equivalent_preserves_every_observer_from_a_mixed_generator(right_word, expected):
+    left = Mode.from_word("ab")
+    right = Mode.from_word(right_word)
+    families = ("length", "bag", "ordered")
+    yielded = []
+    calls = []
+
+    def observers():
+        for family in families:
+            yielded.append(family)
+            response = TEST_FAMILIES[family][0]
+
+            def observe(value, name=family, observer=response):
+                calls.append((name, value))
+                return observer(value)
+
+            yield observe
+
+    tests = observers()
+    assert echo_equivalent(left, right, tests) is expected
+    assert yielded == list(families)
+    assert calls == [(family, value) for value in (left, right) for family in families]
+    assert tuple(tests) == ()
+
+
+@pytest.mark.parametrize(("right_word", "expected"), (("ab", True), ("ba", False)))
+def test_echo_equivalent_reads_a_single_pass_mixed_family_once(right_word, expected):
+    class SinglePassFamily:
+        def __init__(self):
+            self.reads = 0
+
+        def __iter__(self):
+            self.reads += 1
+            assert self.reads == 1
+            return iter(TEST_FAMILIES["length"] + TEST_FAMILIES["bag"] + TEST_FAMILIES["ordered"])
+
+    tests = SinglePassFamily()
+    assert echo_equivalent(Mode.from_word("ab"), Mode.from_word(right_word), tests) is expected
+    assert tests.reads == 1
 
 
 def test_cyclic_observer_canonicalizes_rotation():
