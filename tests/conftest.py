@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import logging
+import os
 from pathlib import Path
+import re
 
 import pytest
 
@@ -44,6 +46,74 @@ PINNED_LEAN_TESTS = frozenset(
     }
 )
 
+#: Modules whose assertions need the theorem-proof toolchain capability: Linux
+#: x86_64, CPython 3.11.14, the direct pinned Lean 4.30.0-rc2 and the R9 elan
+#: route. Elsewhere their subjects fail closed with typed blocked reports, so the
+#: portable lane deselects them; the complete Linux lane runs every one.
+THEOREM_TOOLCHAIN_TESTS = frozenset(
+    {
+        "test_all_depth_family_p1d3.py",
+        "test_all_depth_family_p1d3_adversarial.py",
+        "test_all_depth_family_p1d3_counterexamples.py",
+        "test_axiom_kernel.py",
+        "test_benchmark_derivations.py",
+        "test_certify.py",
+        "test_certify_padic_local_realization.py",
+        "test_certify_prime_power_observer_actualization.py",
+        "test_certify_prime_power_reduction_network.py",
+        "test_certify_vam_optimizer.py",
+        "test_classical_benchmarks.py",
+        "test_comparative_bridge_ledger.py",
+        "test_comparative_ledgers_certificate.py",
+        "test_deduction_chain.py",
+        "test_essence_core.py",
+        "test_formal_export_binomial_symmetry.py",
+        "test_formal_export_completion.py",
+        "test_formal_export_geometry_wave.py",
+        "test_formal_export_prep.py",
+        "test_formal_export_probability_independence.py",
+        "test_formal_export_probability_union.py",
+        "test_formal_export_remaining_completion.py",
+        "test_formal_export_variance_shift.py",
+        "test_generated_confluence_p3c1.py",
+        "test_generated_confluence_p3c1_adversarial.py",
+        "test_intrinsic_observer_echo_evidence.py",
+        "test_intrinsic_observer_echo_source.py",
+        "test_intrinsic_observer_echo_theorem.py",
+        "test_layer_derivations.py",
+        "test_layer_theorem_contract_executable_binding.py",
+        "test_layer_theorem_contracts.py",
+        "test_native_number_theorems.py",
+        "test_observer_synthesis_parity.py",
+        "test_padic_completion_pomega2.py",
+        "test_padic_completion_pomega2_adversarial.py",
+        "test_padic_family_introduction_p3n1.py",
+        "test_padic_family_introduction_p3n1_adversarial.py",
+        "test_padic_local_realization_p3n3n4.py",
+        "test_padic_local_realization_p3n3n4_adversarial.py",
+        "test_prime_power_information_witness_n6w.py",
+        "test_prime_power_observer_actualization_p3n0_history_rows.py",
+        "test_prime_power_observer_actualization_p3n0_public_hostile.py",
+        "test_prime_power_observer_actualization_p3n0_result_hostile.py",
+        "test_prime_power_productive_bridge_p3a1b_adversarial.py",
+        "test_prime_power_reduction_network_p3n2.py",
+        "test_prime_power_reduction_network_p3n2_adversarial.py",
+        "test_prime_power_unbounded_p3n6_hardening.py",
+        "test_prime_power_unbounded_p3n6_positive.py",
+        "test_productivity_counterpressure_p1d2.py",
+        "test_productivity_counterpressure_p1d2_adversarial.py",
+        "test_proof_elaboration_artifact.py",
+        "test_stream_completion_pomega1.py",
+        "test_structural_separation_ledger.py",
+        "test_theorem_language.py",
+        "test_transport_coherence_p3c2.py",
+        "test_vam_optimizer_formal_bridge.py",
+        "test_vam_optimizer_proofs.py",
+        "test_veyra_magic.py",
+        "test_veyra_sage.py",
+    }
+)
+
 NATIVE_RUST_TESTS = frozenset(
     {
         "test_vam_benchmark_publication.py",
@@ -67,11 +137,55 @@ NATIVE_RUST_TESTS = frozenset(
 
 LINUX_HARDENING_TESTS = frozenset(
     {
+        "test_observer_synthesis_v2_pipeline.py",
+        "test_observer_synthesis_v2_receipt_worker.py",
         "test_observer_synthesis_v2_receipt_worker_hardening.py",
+        "test_observer_synthesis_v2_receipt_worker_trust.py",
+        "test_observer_synthesis_v2_trial_worker.py",
         "test_observer_synthesis_v2_trial_worker_hardening.py",
         "test_observer_synthesis_v2_worker.py",
+        "test_observer_synthesis_v2_worker_hardening.py",
     }
 )
+
+
+#: Modules that need POSIX host primitives (fcntl file locks, ``O_DIRECTORY``
+#: descriptors, POSIX process isolation for closed workers). They run in the
+#: portable lane on POSIX hosts and are classified out only where the host lacks
+#: those primitives; the complete Linux lane runs them everywhere it runs.
+POSIX_HOST_TESTS = frozenset(
+    {
+        "test_observer_discovery_v3_closed_worker.py",
+        "test_observer_discovery_v3_governed_evaluation.py",
+        "test_observer_discovery_v3_observer_transport.py",
+        "test_observer_v3_ledger.py",
+        "test_observer_v3_lineage.py",
+        "test_observer_v3_replay.py",
+        "test_prime_power_information_witness_n6w_hostile.py",
+        "test_prime_power_unbounded_p3n6_fifth_repair.py",
+        "test_prime_power_unbounded_p3n6_sources.py",
+    }
+)
+
+
+def host_is_posix() -> bool:
+    """True on hosts that provide the POSIX primitives of ``POSIX_HOST_TESTS``."""
+    return os.name == "posix"
+
+
+#: Single tests that need a capability their module otherwise does not. Keyed by
+#: ``module::function`` so that content-bound test files keep their exact bytes.
+TEST_CAPABILITIES = {
+    "test_observer_core_semantics.py::test_exact_source_reader_rejects_symlink_fifo_hardlink_and_path_race": (
+        "requires_symlinks",
+    ),
+    "test_observer_v3_ledger.py::test_insecure_directory_symlink_state_and_malformed_state_fail": (
+        "requires_symlinks",
+    ),
+    "test_prime_power_unbounded_p3n6_sources.py::test_n6_source_transaction_closes_every_fd_on_nested_rejection": (
+        "requires_linux_hardening",
+    ),
+}
 
 
 def capability_markers_for(path: Path) -> tuple[str, ...]:
@@ -81,8 +195,12 @@ def capability_markers_for(path: Path) -> tuple[str, ...]:
     markers: list[str] = []
     if name in PINNED_LEAN_TESTS:
         markers.extend(("requires_posix_file_locks", "requires_linux_hardening", "requires_pinned_lean"))
+    if name in THEOREM_TOOLCHAIN_TESTS:
+        markers.append("requires_pinned_lean")
     if name in NATIVE_RUST_TESTS:
         markers.append("requires_native_rust")
+    if name in POSIX_HOST_TESTS and not host_is_posix():
+        markers.append("requires_posix_host")
     if name in LINUX_HARDENING_TESTS:
         markers.append("requires_linux_hardening")
     result = tuple(dict.fromkeys(markers))
@@ -90,12 +208,36 @@ def capability_markers_for(path: Path) -> tuple[str, ...]:
     return result
 
 
+_EXCLUSION_FILTER = re.compile(r"not \w+(?: and not \w+)*")
+
+
+def pytest_ignore_collect(collection_path: Path, config: pytest.Config) -> bool | None:
+    """Do not import a classified module whose capability the ``-m`` filter already deselects.
+
+    Deselection happens after import, so a module with host-specific top-level
+    imports (``fcntl``, ``pwd``) would otherwise break collection on hosts that
+    the filter excludes anyway. Only plain ``not a and not b`` filters are read;
+    anything else keeps normal collection and deselection.
+    """
+    markers = capability_markers_for(collection_path)
+    expression = (config.getoption("markexpr", default="") or "").strip()
+    if not markers or not _EXCLUSION_FILTER.fullmatch(expression):
+        return None
+    excluded = set(re.findall(r"not (\w+)", expression))
+    if excluded.isdisjoint(markers):
+        return None
+    logger.debug("pytest_ignore_collect excluded path=%s markers=%r", collection_path.name, markers)
+    return True
+
+
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     """Attach capability metadata without skipping or changing full-lane tests."""
     logger.debug("pytest_collection_modifyitems entry items=%d", len(items))
     marked = 0
     for item in items:
-        for marker in capability_markers_for(Path(str(item.path))):
+        path = Path(str(item.path))
+        test_key = f"{path.name}::{getattr(item, 'originalname', item.name)}"
+        for marker in (*capability_markers_for(path), *TEST_CAPABILITIES.get(test_key, ())):
             item.add_marker(getattr(pytest.mark, marker))
             marked += 1
     logger.debug("pytest_collection_modifyitems exit marker_applications=%d", marked)
