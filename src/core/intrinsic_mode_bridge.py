@@ -8,7 +8,6 @@ from pathlib import Path
 import logging
 import os
 import re
-import shutil
 import subprocess
 from types import MappingProxyType
 from typing import Mapping
@@ -22,10 +21,15 @@ from .proof_core_bridge import (
     ProofCoreBridgeReport, proof_core_bridge_report, verify_proof_core_bridge_report,
 )
 from .proof_core_codec import canonical_json
-from .proof_core_manifest import EXPECTED_LEAN_BINARY_SHA256
+from .proof_elaboration_manifest import (
+    EXPECTED_LEAN_BINARY_SHA256, EXPECTED_LEAN_RUNTIME,
+)
+from .proof_elaboration_runtime_guard import guarded_lean_run
+from .proof_elaboration_toolchain import LEAN_BINARY, TOOLCHAIN_ROOT, lean_runtime_digest
 from .proof_core_resonance import intrinsic_resonance_theorem
 
 from .paths import PROJECT_ROOT
+from .platform_posix import user_home
 
 logger = logging.getLogger(__name__)
 LEAN_DIR = PROJECT_ROOT / "proofs" / "lean"
@@ -102,51 +106,62 @@ def _read_sources(paths: Mapping[str, Path]) -> dict[str, bytes]:
     return result
 
 
-def _lean_command() -> list[str]:
-    logger.debug("intrinsic_mode_bridge._lean_command entry")
-    elan = shutil.which("elan")
-    if not elan:
-        logger.error("intrinsic_mode_bridge pinned elan unavailable")
-        return []
-    resolved = subprocess.run(
-        [elan, "which", "lean"], cwd=PROJECT_ROOT,
-        text=True, capture_output=True, check=False,
-    )
-    lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
-    try:
-        lean_bytes = lean_path.read_bytes() if lean_path.is_file() else b""
-    except OSError:
-        lean_bytes = b""
-    if not lean_bytes or _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
-        logger.error("intrinsic_mode_bridge pinned Lean content unavailable")
-        return []
-    result = [str(lean_path), "-DwarningAsError=true"]
-    logger.debug("intrinsic_mode_bridge._lean_command exit result=%r", result)
+def _runtime_identity() -> str:
+    """Require the same reviewed Lean runtime closure used by R10."""
+    actual = lean_runtime_digest()
+    if actual != EXPECTED_LEAN_RUNTIME:
+        raise ValueError("r9-pinned-lean-runtime-closure-mismatch")
+    return f"merkle={actual[0]}|files={actual[1]}|bytes={actual[2]}"
+
+
+def _clean_env(lean_paths: tuple[Path, ...] = ()) -> dict[str, str]:
+    result = {
+        "HOME": str(user_home()),
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+    }
+    if lean_paths:
+        result["LEAN_PATH"] = os.pathsep.join(map(str, lean_paths))
     return result
 
 
-def _toolchain_identity(command: list[str]) -> str:
-    logger.debug("intrinsic_mode_bridge._toolchain_identity entry")
-    proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
-    version = (proc.stdout or proc.stderr).strip()
-    match = re.fullmatch(r"Lean \(version ([^,\s)]+)(?:,.*)?\)", version)
-    if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
-        logger.error("intrinsic_mode_bridge toolchain mismatch version=%r", version)
-        raise ValueError("r9-pinned-lean-version-mismatch")
-    lean_path = Path(command[0])
+def _lean_command() -> list[str]:
+    """Use only the fixed direct Lean binary after binary/runtime review."""
     try:
-        lean_bytes = lean_path.read_bytes()
+        lean_bytes = LEAN_BINARY.read_bytes()
     except OSError as exc:
         raise ValueError("r9-pinned-lean-binary-unavailable") from exc
     if _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
         raise ValueError("r9-pinned-lean-binary-digest-mismatch")
-    result = (
-        f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
-        f"sha256={EXPECTED_LEAN_BINARY_SHA256}|size={len(lean_bytes)}"
-    )
-    logger.debug("intrinsic_mode_bridge._toolchain_identity exit result=%s", result)
-    return result
+    _runtime_identity()
+    return [str(LEAN_BINARY), "-DwarningAsError=true"]
 
+
+def _toolchain_identity(command: list[str]) -> str:
+    """Bind the fixed direct Lean binary and complete reviewed runtime closure."""
+    if not command or Path(command[0]) != LEAN_BINARY:
+        raise ValueError("r9-pinned-lean-command-mismatch")
+    try:
+        proc = guarded_lean_run(
+            command + ["--version"], cwd=TOOLCHAIN_ROOT, env=_clean_env(),
+            timeout=30, expected=EXPECTED_LEAN_RUNTIME,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("r9-pinned-lean-version-timeout") from exc
+    version = (proc.stdout or proc.stderr).strip()
+    match = re.fullmatch(r"Lean \(version ([^,\s)]+)(?:,.*)?\)", version)
+    if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
+        raise ValueError("r9-pinned-lean-version-mismatch")
+    runtime = _runtime_identity()
+    try:
+        size = LEAN_BINARY.stat().st_size
+    except OSError as exc:
+        raise ValueError("r9-pinned-lean-binary-unavailable") from exc
+    return (
+        f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
+        f"sha256={EXPECTED_LEAN_BINARY_SHA256}|{runtime}|size={size}"
+    )
 
 def _blocked(reason: str, artifact: str = "") -> IntrinsicModeBridgeReport:
     logger.error("intrinsic_mode_bridge blocked reason=%s", reason)
@@ -182,14 +197,20 @@ def _validate_inputs(
 
 def _compile(command: list[str], snapshot) -> tuple[bool, str]:
     logger.debug("intrinsic_mode_bridge._compile entry sources=%d", len(snapshot.paths))
-    env = {**os.environ, "LEAN_PATH": str(snapshot.output_dir)}
+    env = _clean_env((snapshot.output_dir,))
     diagnostics = []
     for index, (_, source) in enumerate(snapshot.paths, 1):
         output = [] if index == len(snapshot.paths) else ["-o", str(snapshot.output_dir / f"{source.stem}.olean")]
-        proc = subprocess.run(
-            command + ["-R", str(snapshot.root)] + output + [str(source)],
-            cwd=snapshot.root, env=env, text=True, capture_output=True, check=False,
-        )
+        try:
+            proc = guarded_lean_run(
+                command + ["-R", str(snapshot.root)] + output + [str(source)],
+                cwd=snapshot.root, env=env, timeout=120,
+                expected=EXPECTED_LEAN_RUNTIME,
+            )
+        except subprocess.TimeoutExpired:
+            return False, ";".join(diagnostics) + f":{source.stem}:timeout"
+        except ValueError as exc:
+            return False, ";".join(diagnostics) + f":{source.stem}:{exc}"
         combined = (proc.stderr or "") + (proc.stdout or "")
         diagnostics.append(f"{index}/{LEAN_STAGE_COUNT}:{source.stem}:rc={proc.returncode}")
         if proc.returncode or "warning:" in combined.lower():
@@ -221,8 +242,6 @@ def check_intrinsic_mode_bridge(
         r7 = proof_core_bridge_report()
         digests, r7_bridge = _validate_inputs(sources, r7)
         command = _lean_command()
-        if not command:
-            raise ValueError("r9-pinned-elan-not-found")
         toolchain = _toolchain_identity(command)
         snapshot_key = _sha(canonical_json({
             "schema": "veyra-intrinsic-snapshot-v1", "sources": digests,
@@ -254,8 +273,6 @@ def verify_intrinsic_mode_bridge_report(report: object) -> bool:
         r7 = proof_core_bridge_report()
         digests, r7_bridge = _validate_inputs(sources, r7)
         command = _lean_command()
-        if not command:
-            return False
         toolchain = _toolchain_identity(command)
     except (OSError, UnicodeDecodeError, ValueError):
         logger.exception("verify_intrinsic_mode_bridge_report trust failure")
@@ -279,8 +296,6 @@ def _default_trust_key() -> str:
         sources = _read_sources(SOURCE_PATHS)
         r7 = proof_core_bridge_report()
         command = _lean_command()
-        if not command:
-            raise ValueError("r9-pinned-elan-not-found")
         result = _sha(canonical_json({
             "sources": {name: _sha(source) for name, source in sources.items()},
             "r7": [r7.artifact_digest, r7.binding_digest],

@@ -8,14 +8,16 @@ from pathlib import Path
 import logging
 import os
 import re
-import shutil
 import subprocess
 
 from .proof_core_codec import canonical_json
 from .proof_core_lean_render import render_resonance_lean
-from .proof_core_manifest import (
-    EXPECTED_LEAN_BINARY_SHA256, EXPECTED_TCB_DIGESTS, TCB_SCHEMA,
+from .proof_core_manifest import EXPECTED_TCB_DIGESTS, TCB_SCHEMA
+from .proof_elaboration_manifest import (
+    EXPECTED_LEAN_BINARY_SHA256, EXPECTED_LEAN_RUNTIME,
 )
+from .proof_elaboration_runtime_guard import guarded_lean_run
+from .proof_elaboration_toolchain import LEAN_BINARY, TOOLCHAIN_ROOT, lean_runtime_digest
 from .proof_core_snapshot import LeanSourceSnapshot, materialize_lean_snapshot
 from .proof_core_resonance import (
     IntrinsicResonanceTheorem, intrinsic_resonance_theorem,
@@ -23,6 +25,7 @@ from .proof_core_resonance import (
 )
 
 from .paths import PROJECT_ROOT
+from .platform_posix import user_home
 
 logger = logging.getLogger(__name__)
 LEAN_DIR = PROJECT_ROOT / "proofs" / "lean"
@@ -77,51 +80,77 @@ def _read(path: Path) -> bytes:
     return result
 
 
+def _runtime_identity() -> str:
+    """Require the reviewed complete Lean runtime closure."""
+    logger.debug("proof_core_bridge._runtime_identity entry")
+    actual = lean_runtime_digest()
+    if actual != EXPECTED_LEAN_RUNTIME:
+        logger.error("proof_core_bridge runtime closure mismatch actual=%r", actual)
+        raise ValueError("pinned-lean-runtime-closure-mismatch")
+    result = f"merkle={actual[0]}|files={actual[1]}|bytes={actual[2]}"
+    logger.debug("proof_core_bridge._runtime_identity exit result=%s", result)
+    return result
+
+
+def _clean_env(lean_paths: tuple[Path, ...] = ()) -> dict[str, str]:
+    """Build the minimal environment used for reviewed Lean execution."""
+    result = {
+        "HOME": str(user_home()),
+        "PATH": "/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+    }
+    if lean_paths:
+        result["LEAN_PATH"] = os.pathsep.join(map(str, lean_paths))
+    return result
+
+
 def _lean_command() -> list[str]:
+    """Use only the fixed direct Lean binary after binary/runtime review."""
     logger.debug("proof_core_bridge._lean_command entry")
-    elan = shutil.which("elan")
-    if not elan:
-        logger.error("proof_core_bridge._lean_command pinned elan unavailable")
-        return []
-    resolved = subprocess.run(
-        [elan, "which", "lean"], cwd=PROJECT_ROOT,
-        text=True, capture_output=True, check=False,
-    )
-    lean_path = Path(resolved.stdout.strip()) if resolved.returncode == 0 else Path()
     try:
-        lean_bytes = lean_path.read_bytes() if lean_path.is_file() else b""
-    except OSError:
-        lean_bytes = b""
-    if not lean_bytes or _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
-        logger.error("proof_core_bridge._lean_command pinned Lean content unavailable")
-        return []
-    result = [str(lean_path), "-DwarningAsError=true"]
+        lean_bytes = LEAN_BINARY.read_bytes()
+    except OSError as exc:
+        raise ValueError("pinned-lean-binary-unavailable") from exc
+    if _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
+        raise ValueError("pinned-lean-binary-digest-mismatch")
+    _runtime_identity()
+    result = [str(LEAN_BINARY), "-DwarningAsError=true"]
     logger.debug("proof_core_bridge._lean_command exit result=%r", result)
     return result
 
 
 def _toolchain_identity(command: list[str]) -> str:
+    """Bind the exact fixed Lean binary and complete reviewed runtime closure."""
     logger.debug("proof_core_bridge._toolchain_identity entry command=%r", command)
-    proc = subprocess.run(command + ["--version"], text=True, capture_output=True, check=False)
+    if not command or Path(command[0]) != LEAN_BINARY:
+        raise ValueError("pinned-lean-command-mismatch")
+    try:
+        proc = guarded_lean_run(
+            command + ["--version"], cwd=TOOLCHAIN_ROOT, env=_clean_env(),
+            timeout=30, expected=EXPECTED_LEAN_RUNTIME,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise ValueError("pinned-lean-version-timeout") from exc
     version = (proc.stdout or proc.stderr).strip()
     match = re.fullmatch(r"Lean \(version ([^,\s)]+)(?:,.*)?\)", version)
     if proc.returncode or match is None or match.group(1) != LEAN_VERSION:
-        logger.error("proof_core_bridge._toolchain_identity mismatch rc=%d version=%r", proc.returncode, version)
+        logger.error(
+            "proof_core_bridge._toolchain_identity mismatch rc=%d version=%r",
+            proc.returncode, version,
+        )
         raise ValueError("pinned-lean-version-mismatch")
-    lean_path = Path(command[0])
+    runtime = _runtime_identity()
     try:
-        lean_bytes = lean_path.read_bytes()
+        size = LEAN_BINARY.stat().st_size
     except OSError as exc:
         raise ValueError("pinned-lean-binary-unavailable") from exc
-    if _sha(lean_bytes) != EXPECTED_LEAN_BINARY_SHA256:
-        raise ValueError("pinned-lean-binary-digest-mismatch")
     result = (
         f"{version}|toolchain={LEAN_TOOLCHAIN}|binary=lean|"
-        f"sha256={EXPECTED_LEAN_BINARY_SHA256}|size={len(lean_bytes)}"
+        f"sha256={EXPECTED_LEAN_BINARY_SHA256}|{runtime}|size={size}"
     )
     logger.debug("proof_core_bridge._toolchain_identity exit result=%s", result)
     return result
-
 
 def _forbidden_source(source: bytes) -> tuple[str, ...]:
     logger.debug("proof_core_bridge._forbidden_source entry bytes=%d", len(source))
@@ -141,13 +170,22 @@ def _compile_chain(
     command: list[str], snapshot: LeanSourceSnapshot,
 ) -> tuple[bool, str]:
     logger.debug("proof_core_bridge._compile_chain entry sources=%d", len(snapshot.paths))
-    env = {**os.environ, "LEAN_PATH": str(snapshot.output_dir)}
+    env = _clean_env((snapshot.output_dir,))
     diagnostics = []
     for index, (source_name, source) in enumerate(snapshot.paths, start=1):
         name = source.stem
         emit = source_name != "export"
         output = ["-o", str(snapshot.output_dir / f"{name}.olean")] if emit else []
-        proc = subprocess.run(command + ["-R", str(snapshot.root)] + output + [str(source)], cwd=snapshot.root, env=env, text=True, capture_output=True, check=False)
+        try:
+            proc = guarded_lean_run(
+                command + ["-R", str(snapshot.root)] + output + [str(source)],
+                cwd=snapshot.root, env=env, timeout=120,
+                expected=EXPECTED_LEAN_RUNTIME,
+            )
+        except subprocess.TimeoutExpired:
+            return False, ";".join(diagnostics) + f":{name}:timeout"
+        except ValueError as exc:
+            return False, ";".join(diagnostics) + f":{name}:{exc}"
         combined = (proc.stderr or "") + (proc.stdout or "")
         diagnostics.append(f"{index}/4:{name}:rc={proc.returncode}")
         if proc.returncode or "warning:" in combined.lower():
@@ -203,10 +241,8 @@ def check_proof_core_bridge(
     tcb_digests = {name: _sha(sources[name]) for name in EXPECTED_TCB_DIGESTS}
     if tcb_digests != EXPECTED_TCB_DIGESTS:
         return _blocked("reviewed-lean-tcb-drift", digest, True, True)
-    command = _lean_command()
-    if not command:
-        return _blocked("pinned-elan-not-found", digest, True, True, True)
     try:
+        command = _lean_command()
         toolchain = _toolchain_identity(command)
     except (OSError, ValueError) as exc:
         return _blocked(str(exc), digest, True, True, True)
@@ -254,8 +290,8 @@ def verify_proof_core_bridge_report(report: object) -> bool:
     try:
         sources = {name: _read(path) for name, path in paths.items()}
         command = _lean_command()
-        if not command or sources["export"] != render_resonance_lean(item).encode():
-            logger.error("verify_proof_core_bridge_report source/toolchain mismatch")
+        if sources["export"] != render_resonance_lean(item).encode():
+            logger.error("verify_proof_core_bridge_report source mismatch")
             return False
         toolchain = _toolchain_identity(command)
     except (OSError, ValueError):
@@ -284,24 +320,21 @@ def verify_proof_core_bridge_report(report: object) -> bool:
 def _default_trust_key() -> str:
     logger.debug("proof_core_bridge._default_trust_key entry")
     item = intrinsic_resonance_theorem()
-    command = _lean_command()
-    if not command:
-        result = "no-pinned-elan"
-    else:
-        try:
-            toolchain = _toolchain_identity(command)
-            files = [
-                LEAN_DIR / "VeyraNativeArithmetic.lean", LEAN_DIR / "VeyraProofKernel.lean",
-                LEAN_DIR / "VeyraProofSoundness.lean", LEAN_DIR / "VeyraProofResonance.lean",
-            ]
-            result = _sha(canonical_json({
-                "artifact": item.artifact.proof_digest,
-                "sources": [_sha(_read(path)) for path in files],
-                "toolchain": toolchain,
-            }).encode())
-        except (OSError, ValueError) as exc:
-            logger.error("proof_core_bridge._default_trust_key blocked error=%s", exc)
-            result = "blocked:" + str(exc)
+    try:
+        command = _lean_command()
+        toolchain = _toolchain_identity(command)
+        files = [
+            LEAN_DIR / "VeyraNativeArithmetic.lean", LEAN_DIR / "VeyraProofKernel.lean",
+            LEAN_DIR / "VeyraProofSoundness.lean", LEAN_DIR / "VeyraProofResonance.lean",
+        ]
+        result = _sha(canonical_json({
+            "artifact": item.artifact.proof_digest,
+            "sources": [_sha(_read(path)) for path in files],
+            "toolchain": toolchain,
+        }).encode())
+    except (OSError, ValueError) as exc:
+        logger.error("proof_core_bridge._default_trust_key blocked error=%s", exc)
+        result = "blocked:" + str(exc)
     logger.debug("proof_core_bridge._default_trust_key exit result=%s", result)
     return result
 

@@ -89,6 +89,8 @@ def _clean_env(lean_paths: tuple[Path, ...] = ()) -> dict[str, str]:
 def toolchain_identity(command: list[str]) -> str:
     """Bind exact Lean content/runtime without host-local filesystem metadata."""
     logger.debug("proof_elaboration_bridge_io.toolchain_identity entry")
+    if not command or Path(command[0]) != LEAN_BINARY:
+        raise ValueError("r10-pinned-lean-command-mismatch")
     try:
         proc = guarded_lean_run(
             command + ["--version"], cwd=TOOLCHAIN_ROOT, env=_clean_env(),
