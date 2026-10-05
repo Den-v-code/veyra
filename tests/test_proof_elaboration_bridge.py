@@ -91,6 +91,7 @@ def test_r10_toolchain_identity_excludes_host_local_metadata(
     lean = tmp_path / "lean"
     lean.write_bytes(b"x" * 9024)
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
+    monkeypatch.setattr(bridge_io, "LEAN_BINARY", lean)
     monkeypatch.setattr(
         bridge_io,
         "guarded_lean_run",
@@ -110,6 +111,9 @@ def test_r10_toolchain_identity_excludes_host_local_metadata(
     assert "toolchain=leanprover/lean4:v4.30.0-rc2" in first
     assert "sha256=" in first and "binary=lean" in first
     assert "path=" not in first and "inode=" not in first and "mtime=" not in first
+    with pytest.raises(ValueError, match="r10-pinned-lean-command-mismatch"):
+        bridge_io.toolchain_identity([str(tmp_path / "other-lean")])
+
 
 
 def test_fake_path_and_elan_home_cannot_replace_direct_pinned_lean(tmp_path, monkeypatch):

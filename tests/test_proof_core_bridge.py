@@ -112,11 +112,11 @@ def test_default_report_cache_is_keyed_by_live_source_hashes(tmp_path, monkeypat
     assert changed.diagnostics == "reviewed-lean-tcb-drift"
 
 
-def test_unpinned_lean_fallback_is_not_accepted(monkeypatch):
-    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: None)
+def test_missing_fixed_lean_binary_is_not_accepted(tmp_path, monkeypatch):
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", tmp_path / "missing-lean")
     report = check_proof_core_bridge()
     assert report.status == "blocked"
-    assert report.diagnostics == "pinned-elan-not-found"
+    assert report.diagnostics == "pinned-lean-binary-unavailable"
 
 
 @pytest.mark.parametrize("version", [
@@ -124,62 +124,100 @@ def test_unpinned_lean_fallback_is_not_accepted(monkeypatch):
     "Lean (version 4.30.0-rc2-evil, commit deadbeef, Release)",
     "fake version 4.30.0-rc2",
 ])
-def test_pinned_version_match_is_exact(monkeypatch, version):
+def test_pinned_version_match_is_exact(tmp_path, monkeypatch, version):
+    lean = tmp_path / "lean"
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda *args, **kwargs: SimpleNamespace(returncode=0, stdout=version, stderr=""),
+        bridge_module,
+        "guarded_lean_run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0, stdout=version, stderr="",
+        ),
     )
     with pytest.raises(ValueError, match="pinned-lean-version-mismatch"):
-        bridge_module._toolchain_identity(["/not-inspected-on-mismatch"])
+        bridge_module._toolchain_identity([str(lean)])
 
 
-def test_lean_command_executes_resolved_content_pinned_binary(tmp_path, monkeypatch):
+def test_lean_command_uses_fixed_direct_content_pinned_binary(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
-    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", bridge_module._sha(lean.read_bytes()))
-    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
+    runtime = ("a" * 64, 2365, 522231408)
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(
-            returncode=0, stdout=str(lean) + "\n", stderr=""
-        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
+        bridge_module, "EXPECTED_LEAN_BINARY_SHA256",
+        bridge_module._sha(lean.read_bytes()),
     )
-    command = bridge_module._lean_command()
-    assert command == [str(lean), "-DwarningAsError=true"]
-    assert command[0] != "/runner/elan"
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_RUNTIME", runtime)
+    monkeypatch.setattr(bridge_module, "lean_runtime_digest", lambda: runtime)
+    assert bridge_module._lean_command() == [str(lean), "-DwarningAsError=true"]
 
 
-def test_lean_command_rejects_unreviewed_compiler_content(tmp_path, monkeypatch):
+def test_lean_command_rejects_unreviewed_launcher_content(tmp_path, monkeypatch):
     lean = tmp_path / "lean"
-    lean.write_bytes(b"attacker-compiler")
-    monkeypatch.setattr(bridge_module.shutil, "which", lambda _: "/runner/elan")
-    monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(
-            returncode=0, stdout=str(lean) + "\n", stderr=""
-        ) if command == ["/runner/elan", "which", "lean"] else (_ for _ in ()).throw(AssertionError(command)),
-    )
-    assert bridge_module._lean_command() == []
+    lean.write_bytes(b"attacker-launcher")
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
+    with pytest.raises(ValueError, match="pinned-lean-binary-digest-mismatch"):
+        bridge_module._lean_command()
 
 
-def test_toolchain_identity_is_content_bound_not_filesystem_metadata(tmp_path, monkeypatch):
+def test_lean_command_rejects_substituted_runtime_with_reviewed_launcher(
+    tmp_path, monkeypatch,
+):
     lean = tmp_path / "lean"
     lean.write_bytes(b"reviewed-lean-binary")
-    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_BINARY_SHA256", bridge_module._sha(lean.read_bytes()))
+    reviewed = ("a" * 64, 2365, 522231408)
+    substituted = ("b" * 64, 2365, 522231408)
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
+    monkeypatch.setattr(
+        bridge_module, "EXPECTED_LEAN_BINARY_SHA256",
+        bridge_module._sha(lean.read_bytes()),
+    )
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_RUNTIME", reviewed)
+    monkeypatch.setattr(bridge_module, "lean_runtime_digest", lambda: substituted)
+    with pytest.raises(ValueError, match="pinned-lean-runtime-closure-mismatch"):
+        bridge_module._lean_command()
+
+
+def test_toolchain_identity_is_content_bound_and_uses_clean_environment(
+    tmp_path, monkeypatch,
+):
+    lean = tmp_path / "lean"
+    lean.write_bytes(b"reviewed-lean-binary")
+    runtime = ("a" * 64, 2365, 522231408)
     version = "Lean (version 4.30.0-rc2, x86_64-test, commit deadbeef, Release)"
+    seen_envs = []
+
+    def guarded(*_args, **kwargs):
+        seen_envs.append(dict(kwargs["env"]))
+        return SimpleNamespace(returncode=0, stdout=version, stderr="")
+
+    monkeypatch.setattr(bridge_module, "LEAN_BINARY", lean)
     monkeypatch.setattr(
-        bridge_module.subprocess, "run",
-        lambda command, **_kwargs: SimpleNamespace(returncode=0, stdout=version, stderr="")
-        if command[-1] == "--version" else (_ for _ in ()).throw(AssertionError(command)),
+        bridge_module, "EXPECTED_LEAN_BINARY_SHA256",
+        bridge_module._sha(lean.read_bytes()),
     )
-    command = [str(lean), "-DwarningAsError=true"]
+    monkeypatch.setattr(bridge_module, "EXPECTED_LEAN_RUNTIME", runtime)
+    monkeypatch.setattr(bridge_module, "lean_runtime_digest", lambda: runtime)
+    monkeypatch.setattr(bridge_module, "guarded_lean_run", guarded)
+    monkeypatch.setenv("PATH", "/attacker")
+    monkeypatch.setenv("LD_LIBRARY_PATH", "/attacker")
+    monkeypatch.setenv("ELAN_HOME", "/attacker")
+
+    command = bridge_module._lean_command()
     first = bridge_module._toolchain_identity(command)
     lean.touch()
     second = bridge_module._toolchain_identity(command)
+
     assert first == second
     assert f"sha256={bridge_module.EXPECTED_LEAN_BINARY_SHA256}" in first
-    assert "binary=lean" in first
+    assert "merkle=" in first and "binary=lean" in first
     assert "path=" not in first and "inode=" not in first and "mtime=" not in first
+    assert seen_envs
+    for env in seen_envs:
+        assert env["PATH"] == "/usr/bin:/bin"
+        assert "LD_LIBRARY_PATH" not in env
+        assert "ELAN_HOME" not in env
+
 
 
 def test_compile_uses_captured_snapshot_after_original_source_mutation(tmp_path, monkeypatch):
